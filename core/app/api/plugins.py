@@ -21,7 +21,9 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
     if not file.filename.endswith(".hm"):
         raise HTTPException(status_code=400, detail="Only .hm files are supported")
 
-    plugin_name = file.filename[:-3]
+    # Prevent path traversal vulnerabilities by replacing backslashes and getting just the base name
+    safe_filename = file.filename.replace("\\", "/")
+    plugin_name = os.path.basename(safe_filename)[:-3]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".hm") as tmp:
         tmp.write(file.file.read())
