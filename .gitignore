@@ -1,0 +1,8 @@
+node_modules/
+dist/
+
+# локальные артефакты разработки
+*.log
+*.pyc
+__pycache__/
+.env

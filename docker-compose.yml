@@ -1,0 +1,28 @@
+services:
+  core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8142:8142"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/homemedia
+      - DATA_DIR=/app/data
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: homemedia
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
