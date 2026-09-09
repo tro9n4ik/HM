@@ -11,7 +11,7 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # Load SECRET_KEY
-export $(cat "$ENV_FILE" | xargs)
+set -a; source "$ENV_FILE"; set +a
 
 # Create directory for plugins
 mkdir -p "${DATA_DIR}/plugins"

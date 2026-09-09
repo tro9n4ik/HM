@@ -7,10 +7,16 @@ from app.api.deps import get_current_user
 from app.services.plugin_manager import plugin_manager
 import tempfile
 import os
+import re
 from pydantic import BaseModel
 from typing import Dict
 
 router = APIRouter(prefix="/api/plugins", tags=["plugins"])
+
+def validate_plugin_name(name: str):
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        raise HTTPException(status_code=400, detail="Invalid plugin name")
+    return name
 
 @router.get("")
 def list_plugins(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -21,7 +27,7 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
     if not file.filename.endswith(".hm"):
         raise HTTPException(status_code=400, detail="Only .hm files are supported")
 
-    plugin_name = file.filename[:-3]
+    plugin_name = validate_plugin_name(file.filename[:-3])
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".hm") as tmp:
         tmp.write(file.file.read())
@@ -34,10 +40,19 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
         version = "1.0.0"
         if os.path.exists(manifest_path):
             import json
-            with open(manifest_path, "r") as f:
-                manifest = json.load(f)
-                version = manifest.get("version", "1.0.0")
-                plugin_name = manifest.get("name", plugin_name)
+            try:
+                with open(manifest_path, "r") as f:
+                    manifest = json.load(f)
+                    if "name" not in manifest or "version" not in manifest:
+                        raise HTTPException(status_code=400, detail="Manifest must contain 'name' and 'version'")
+                    if "port" in manifest:
+                        raise HTTPException(status_code=400, detail="Manifest cannot hardcode 'port'")
+                    version = manifest.get("version")
+                    plugin_name = validate_plugin_name(manifest.get("name"))
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="manifest.json is invalid JSON")
+        else:
+            raise HTTPException(status_code=400, detail="manifest.json is missing from package")
 
         plugin = db.query(Plugin).filter(Plugin.name == plugin_name).first()
         if not plugin:

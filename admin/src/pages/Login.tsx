@@ -11,8 +11,11 @@ export function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await axios.post('/api/auth/login', { username, password });
-      localStorage.setItem('token', res.data.access_token);
+      // Cookie is set automatically via Set-Cookie header
+      await axios.post('/api/auth/login', { username, password });
+
+      // Kept for backward compatibility or local usage, but HTTPOnly cookie is used by API
+
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed');

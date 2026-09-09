@@ -1,12 +1,10 @@
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import Base, engine, get_db
-from sqlalchemy.orm import sessionmaker
+from app.database import Base, engine, SessionLocal, get_db
 import pytest
+import os
 
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base.metadata.create_all(bind=engine)
+TestingSessionLocal = SessionLocal
 
 def override_get_db():
     try:
@@ -20,6 +18,8 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def run_around_tests():
+    # Set a dummy secret key for testing
+    os.environ["SECRET_KEY"] = "dummy-test-secret"
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
@@ -47,3 +47,4 @@ def test_login():
     response = client.post("/api/auth/login", json={"username": "admin", "password": "password123"})
     assert response.status_code == 200
     assert "access_token" in response.json()
+    assert "access_token" in response.cookies

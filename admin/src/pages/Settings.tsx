@@ -6,9 +6,9 @@ export function Settings() {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const token = localStorage.getItem('token');
+
       try {
-        const res = await axios.get('/api/system/settings', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get('/api/system/settings');
         setSettings(res.data);
       } catch (e) {
         console.error(e);
@@ -19,8 +19,8 @@ export function Settings() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    await axios.put('/api/system/settings', { settings }, { headers: { Authorization: `Bearer ${token}` } });
+
+    await axios.put('/api/system/settings', { settings });
     alert('Saved');
   };
 

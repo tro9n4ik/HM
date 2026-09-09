@@ -8,9 +8,9 @@ export function PluginLogs() {
 
   useEffect(() => {
     const fetchLogs = async () => {
-      const token = localStorage.getItem('token');
+
       try {
-        const res = await axios.get(`/api/plugins/${id}/logs`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get(`/api/plugins/${id}/logs`);
         setLogs(res.data.logs);
       } catch (e) {
         console.error(e);

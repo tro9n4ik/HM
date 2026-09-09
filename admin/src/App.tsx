@@ -13,10 +13,7 @@ const ProtectedRoute = ({ children, setupRequired }: { children: React.ReactNode
   if (setupRequired) {
     return <Navigate to="/setup" />;
   }
-  const token = localStorage.getItem('token');
-  if (!token) {
-    return <Navigate to="/login" />;
-  }
+  // Let the interceptor handle 401s for authentication, but initially render
   return children;
 };
 
@@ -24,6 +21,17 @@ export function App() {
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Intercept 401s globally to force login page if HttpOnly cookie expires or is absent
+    axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.status === 401 && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+
     axios.get('/api/system/setup-status')
       .then(res => setSetupRequired(res.data.setup_required))
       .catch(() => setSetupRequired(false));
@@ -46,8 +54,8 @@ export function App() {
                   <li className="mb-4"><Link to="/" className="hover:text-blue-400">Plugins</Link></li>
                   <li className="mb-4"><Link to="/settings" className="hover:text-blue-400">Settings</Link></li>
                   <li className="mb-4"><Link to="/backup" className="hover:text-blue-400">Backup & Restore</Link></li>
-                  <li className="mb-4 cursor-pointer hover:text-red-400" onClick={() => {
-                    localStorage.removeItem('token');
+                  <li className="mb-4 cursor-pointer hover:text-red-400" onClick={async () => {
+                    await axios.post('/api/auth/logout');
                     window.location.href = '/login';
                   }}>Logout</li>
                 </ul>
