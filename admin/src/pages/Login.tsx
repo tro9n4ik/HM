@@ -6,16 +6,21 @@ export function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
     try {
       const res = await axios.post('/api/auth/login', { username, password });
       localStorage.setItem('token', res.data.access_token);
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -23,29 +28,41 @@ export function Login() {
     <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
       <form onSubmit={handleLogin} className="bg-gray-800 p-8 rounded-lg shadow-lg w-96">
         <h2 className="text-2xl font-bold mb-6">Home.Media Login</h2>
-        {error && <div className="text-red-500 mb-4">{error}</div>}
+        {error && (
+          <div className="text-red-500 mb-4" role="alert">
+            {error}
+          </div>
+        )}
         <div className="mb-4">
-          <label className="block mb-2">Username</label>
+          <label htmlFor="username" className="block mb-2">Username</label>
           <input
+            id="username"
             type="text"
             value={username}
             onChange={e => setUsername(e.target.value)}
-            className="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:border-blue-500"
+            className="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             required
+            disabled={isLoading}
           />
         </div>
         <div className="mb-6">
-          <label className="block mb-2">Password</label>
+          <label htmlFor="password" className="block mb-2">Password</label>
           <input
+            id="password"
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            className="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:border-blue-500"
+            className="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             required
+            disabled={isLoading}
           />
         </div>
-        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-bold">
-          Sign In
+        <button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Signing In...' : 'Sign In'}
         </button>
       </form>
     </div>
