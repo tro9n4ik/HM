@@ -49,7 +49,9 @@ def healthcheck():
 # Serve React App
 static_dir = os.path.join(os.path.dirname(__file__), "web", "static", "admin")
 if os.path.exists(static_dir):
-    app.mount("/assets", StaticFiles(directory=os.path.join(static_dir, "assets")), name="assets")
+    assets_dir = os.path.join(static_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
     # Catch-all route to serve React's index.html for client-side routing
     @app.get("/{full_path:path}")
