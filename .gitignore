@@ -6,3 +6,16 @@ dist/
 *.pyc
 __pycache__/
 .env
+venv/
+core/venv/
+venv/
+core/venv/
+__pycache__/
+*.pyc
+node_modules/
+admin/node_modules/
+venv/
+core/venv/
+core/app/web/static/admin/assets/
+core/app/web/static/admin/index.html
+core/test_override.db

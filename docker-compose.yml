@@ -6,13 +6,20 @@ services:
     ports:
       - "8142:8142"
     volumes:
-      - ./data:/app/data
+      - coredata:/app/data
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/homemedia
       - DATA_DIR=/app/data
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8142/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   db:
     image: postgres:15
@@ -23,6 +30,12 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
+  coredata:
