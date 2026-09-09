@@ -1,0 +1,16 @@
+{
+  "name": "example_plugin",
+  "version": "1.0.0",
+  "config_schema": {
+    "API_KEY": {
+      "type": "secret",
+      "title": "API Key",
+      "description": "The secret API key."
+    },
+    "DEBUG_MODE": {
+      "type": "string",
+      "title": "Debug Mode",
+      "default": "False"
+    }
+  }
+}

@@ -15,7 +15,9 @@ def healthcheck():
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello from Example Plugin"}
+    # Example using get_config
+    debug = plugin.get_config("DEBUG_MODE")
+    return {"message": "Hello from Example Plugin", "debug": debug}
 
 if __name__ == "__main__":
     plugin.register()

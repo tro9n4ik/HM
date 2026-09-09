@@ -1,0 +1,11 @@
+.git
+.gitignore
+.dockerignore
+node_modules
+admin/node_modules
+core/venv
+__pycache__
+*.pyc
+.env
+data
+dev.db
