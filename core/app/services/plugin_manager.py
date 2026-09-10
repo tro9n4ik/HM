@@ -212,9 +212,29 @@ class PluginManager:
             return ""
 
         try:
-            with open(log_file_path, "r") as f:
-                from collections import deque
-                return "".join(deque(f, lines))
+            import os
+            with open(log_file_path, "rb") as f:
+                f.seek(0, os.SEEK_END)
+                file_size = f.tell()
+                block_size = 4096
+                blocks = []
+                lines_found = 0
+                pos = file_size
+                while pos > 0 and lines_found <= lines:
+                    read_size = min(block_size, pos)
+                    pos -= read_size
+                    f.seek(pos)
+                    block = f.read(read_size)
+                    lines_found += block.count(b'\n')
+                    blocks.append(block)
+
+                blocks.reverse()
+                data = b"".join(blocks)
+                last_lines = data.decode('utf-8', errors='replace').splitlines()[-lines:]
+                res = "\n".join(last_lines)
+                if data.endswith(b"\n") and last_lines:
+                    res += "\n"
+                return res
         except Exception as e:
             return f"Error reading logs: {e}"
 
