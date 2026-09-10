@@ -48,7 +48,10 @@ def healthcheck():
 
 # Serve React App
 static_dir = os.path.join(os.path.dirname(__file__), "web", "static", "admin")
-assets_dir = os.path.join(static_dir, "assets")
+if os.path.exists(static_dir):
+    assets_dir = os.path.join(static_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
 # Only mount the static assets directory if it exists, to avoid crashing tests
 # when the frontend hasn't been built yet.

@@ -1,0 +1,4 @@
+## 2025-02-27 - [CRITICAL] Prevent Path Traversal in Plugin Uploads
+**Vulnerability:** In `core/app/api/plugins.py`, the plugin upload endpoint was trusting the raw user-provided `file.filename` to determine the plugin name, which was then directly appended to the extracted zip path `plugin_path = self.plugins_dir / plugin_name` without any sanitization. This allowed an attacker to use a payload like `../../../malicious.hm` to arbitrarily overwrite files outside the safe plugin directory (a critical path traversal vulnerability).
+**Learning:** The FastAPI `UploadFile.filename` is strictly client-controlled and cannot be trusted for file system operations or when constructing paths.
+**Prevention:** Always sanitize uploaded filenames by replacing path separators (e.g., `\`) and using `os.path.basename` (or `werkzeug.utils.secure_filename`) to strip all directory components.

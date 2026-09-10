@@ -1,0 +1,3 @@
+## 2024-05-14 - Optimize plugin log reading
+**Learning:** `PluginManager.get_plugin_logs` previously read the entire plugin log file into memory sequentially (O(N)) using `collections.deque` just to extract the last few lines. This is a severe bottleneck for large log files, especially since it is polled continuously by the frontend every 3 seconds.
+**Action:** Replaced sequential reading with backwards file reading using `os.SEEK_END` and chunked processing. This converts the operation to O(K) where K is the number of requested lines, regardless of file size, drastically reducing memory usage and disk I/O on heavily active plugins.
