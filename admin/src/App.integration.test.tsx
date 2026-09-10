@@ -1,16 +1,18 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Mocked } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
 import { App } from './App';
 
 vi.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios = axios as Mocked<typeof axios>;
 
 describe('App Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default mock implementation for axios.interceptors.response.use
-    mockedAxios.interceptors.response.use.mockImplementation(() => 0);
+    (mockedAxios.interceptors.response.use as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => 0);
   });
 
   it('completes setup and transitions to login without looping', async () => {
