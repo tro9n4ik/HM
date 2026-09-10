@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-export function Setup() {
+interface SetupProps {
+  onSetupComplete?: () => void;
+}
+
+export function Setup({ onSetupComplete }: SetupProps) {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -12,6 +16,9 @@ export function Setup() {
     e.preventDefault();
     try {
       await axios.post('/api/auth/setup', { username, password });
+      if (onSetupComplete) {
+        onSetupComplete();
+      }
       navigate('/login');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Setup failed');
@@ -34,8 +41,9 @@ export function Setup() {
           />
         </div>
         <div className="mb-6">
-          <label className="block mb-2">Password</label>
+          <label htmlFor="password-input" className="block mb-2">Password</label>
           <input
+            id="password-input"
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}

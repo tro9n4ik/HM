@@ -42,7 +42,7 @@ export function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/setup" element={setupRequired ? <Setup /> : <Navigate to="/login" />} />
+        <Route path="/setup" element={setupRequired ? <Setup onSetupComplete={() => setSetupRequired(false)} /> : <Navigate to="/login" />} />
         <Route path="/login" element={setupRequired ? <Navigate to="/setup" /> : <Login />} />
 
         <Route path="/*" element={
