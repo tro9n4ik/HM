@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
@@ -41,15 +41,32 @@ def setup_admin(req: SetupRequest, db: Session = Depends(get_db)):
     return {"message": "Admin user created successfully"}
 
 @router.post("/login")
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
-    secret = os.environ.get("SECRET_KEY", "dev-secret-key")
+    secret = os.environ.get("SECRET_KEY")
+    if not secret:
+        raise RuntimeError("SECRET_KEY environment variable is not set")
     payload = {
         "sub": user.username,
         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
     }
     token = jwt.encode(payload, secret, algorithm="HS256")
+
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        samesite="lax", # Strict can block some internal dashboard redirects if not handled, lax is usually fine for SPAs
+        max_age=86400 # 24 hours
+    )
+
+    # Return token as fallback for legacy API usage
     return {"access_token": token, "token_type": "bearer"}
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie(key="access_token")
+    return {"message": "Logged out"}

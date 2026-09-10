@@ -53,15 +53,20 @@ if os.path.exists(static_dir):
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-    # Catch-all route to serve React's index.html for client-side routing
-    @app.get("/{full_path:path}")
-    async def serve_react_app(full_path: str):
-        if full_path.startswith("api/") or full_path.startswith("plugins/"):
-            # Avoid masking API and Proxy 404s
-            from fastapi import HTTPException
-            raise HTTPException(status_code=404, detail="Not found")
+# Only mount the static assets directory if it exists, to avoid crashing tests
+# when the frontend hasn't been built yet.
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-        index_path = os.path.join(static_dir, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        return {"error": "Frontend not built"}
+# Catch-all route to serve React's index.html for client-side routing
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    if full_path.startswith("api/") or full_path.startswith("plugins/"):
+        # Avoid masking API and Proxy 404s
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Not found")
+
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"error": "Frontend not built"}

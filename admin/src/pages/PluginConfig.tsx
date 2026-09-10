@@ -10,11 +10,11 @@ export function PluginConfig() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem('token');
+
       try {
         const [configRes, schemaRes] = await Promise.all([
-          axios.get(`/api/plugins/${id}/config`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`/api/plugins/${id}/schema`, { headers: { Authorization: `Bearer ${token}` } })
+          axios.get(`/api/plugins/${id}/config`),
+          axios.get(`/api/plugins/${id}/schema`)
         ]);
 
         const initialConfig = { ...configRes.data };
@@ -35,8 +35,8 @@ export function PluginConfig() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    await axios.put(`/api/plugins/${id}/config`, { config }, { headers: { Authorization: `Bearer ${token}` } });
+
+    await axios.put(`/api/plugins/${id}/config`, { config });
     alert('Config Saved');
     navigate('/');
   };

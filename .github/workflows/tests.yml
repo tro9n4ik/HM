@@ -11,11 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Build frontend
+        run: |
+          cd admin
+          npm install
+          npm run build
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: |
           cd core
           python -m pip install --upgrade pip
@@ -25,7 +34,7 @@ jobs:
           cd core
           pytest tests/
 
-  frontend-lint:
+  frontend-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -37,7 +46,7 @@ jobs:
         run: |
           cd admin
           npm install
-      - name: Run linter
+      - name: Run frontend tests
         run: |
           cd admin
           npm run test

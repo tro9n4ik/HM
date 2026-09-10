@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, Depends, WebSocket
+from fastapi import APIRouter, Request, HTTPException, Depends, WebSocket, Query
 from fastapi.responses import StreamingResponse
 import httpx
 import websockets
@@ -6,6 +6,7 @@ from websockets.exceptions import ConnectionClosed
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.models.plugin import Plugin
+from app.api.deps import get_current_user_from_token, get_current_user
 
 router = APIRouter(tags=["proxy"])
 
@@ -13,6 +14,17 @@ client = httpx.AsyncClient()
 
 @router.websocket("/plugins/{plugin_name}/{path:path}")
 async def proxy_websocket(plugin_name: str, path: str, websocket: WebSocket, db: Session = Depends(get_db)):
+    token = websocket.cookies.get("access_token")
+    if not token:
+        await websocket.close(code=1008, reason="Missing token")
+        return
+
+    try:
+        user = get_current_user_from_token(token, db)
+    except Exception:
+        await websocket.close(code=1008, reason="Invalid token")
+        return
+
     plugin = db.query(Plugin).filter(Plugin.name == plugin_name).first()
     if not plugin or (plugin.status != "running" and plugin.status != "degraded"):
         await websocket.close(code=1011, reason="Plugin not available")
@@ -63,7 +75,7 @@ async def proxy_websocket(plugin_name: str, path: str, websocket: WebSocket, db:
             pass
 
 @router.api_route("/plugins/{plugin_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-async def proxy_to_plugin(plugin_name: str, path: str, request: Request, db: Session = Depends(get_db)):
+async def proxy_to_plugin(plugin_name: str, path: str, request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     plugin = db.query(Plugin).filter(Plugin.name == plugin_name).first()
     if not plugin:
         raise HTTPException(status_code=404, detail="Plugin not found")

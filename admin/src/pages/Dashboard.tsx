@@ -7,9 +7,8 @@ export function Dashboard() {
 
   useEffect(() => {
     const fetchPlugins = async () => {
-      const token = localStorage.getItem('token');
       try {
-        const res = await axios.get('/api/plugins', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get('/api/plugins');
         setPlugins(res.data);
       } catch (e) {
         console.error(e);
@@ -25,10 +24,7 @@ export function Dashboard() {
       const file = e.target.files[0];
       const formData = new FormData();
       formData.append('file', file);
-      const token = localStorage.getItem('token');
-      await axios.post('/api/plugins/install', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post('/api/plugins/install', formData);
     }
   };
 
@@ -53,10 +49,10 @@ export function Dashboard() {
                 </div>
                 <div className="flex gap-2">
                   <button className="bg-blue-600 px-4 py-2 rounded text-sm hover:bg-blue-700" onClick={async () => {
-                    await axios.post(`/api/plugins/${p.id}/start`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                    await axios.post(`/api/plugins/${p.id}/start`);
                   }}>Start</button>
                   <button className="bg-gray-600 px-4 py-2 rounded text-sm hover:bg-gray-700" onClick={async () => {
-                    await axios.post(`/api/plugins/${p.id}/stop`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                    await axios.post(`/api/plugins/${p.id}/stop`);
                   }}>Stop</button>
                 </div>
             </div>
@@ -64,7 +60,7 @@ export function Dashboard() {
               <Link to={`/plugins/${p.id}/config`} className="bg-gray-600 px-4 py-2 rounded text-sm hover:bg-gray-700">Config</Link>
               <Link to={`/plugins/${p.id}/logs`} className="bg-gray-600 px-4 py-2 rounded text-sm hover:bg-gray-700">Logs</Link>
               <button className="bg-red-600 px-4 py-2 rounded text-sm hover:bg-red-700" onClick={async () => {
-                await axios.post(`/api/plugins/${p.id}/restart`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                await axios.post(`/api/plugins/${p.id}/restart`);
               }}>Restart</button>
             </div>
           </div>

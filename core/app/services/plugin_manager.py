@@ -21,7 +21,20 @@ class PluginManager:
         plugin_path.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(plugin_path)
+            # Zip-Slip protection
+            for member in zip_ref.infolist():
+                # zip_ref.extract safely normalizes paths in modern python, but
+                # verifying the absolute path doesn't escape plugin_path is safer
+                member_path = Path(member.filename)
+                if member_path.is_absolute() or ".." in member_path.parts:
+                    raise ValueError(f"Zip-slip attempt detected: {member.filename}")
+
+                # Check resolved path
+                extracted_path = (plugin_path / member.filename).resolve()
+                if not str(extracted_path).startswith(str(plugin_path.resolve())):
+                    raise ValueError(f"Zip-slip attempt detected: {member.filename}")
+
+                zip_ref.extract(member, plugin_path)
 
         return str(plugin_path)
 
@@ -54,8 +67,14 @@ class PluginManager:
     def _get_free_port(self, db, start=8100, end=8200) -> int:
         from app.models.plugin import Plugin
         used_ports = [p.port for p in db.query(Plugin).all() if p.port is not None]
+
+        import socket
+        def is_port_in_use(port):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                return s.connect_ex(('127.0.0.1', port)) == 0
+
         for port in range(start, end + 1):
-            if port not in used_ports:
+            if port not in used_ports and not is_port_in_use(port):
                 return port
         raise Exception("No free ports available in the configured range")
 
@@ -73,8 +92,14 @@ class PluginManager:
                     start, end = int(start_str), int(end_str)
                 except:
                     pass
-            plugin.port = self._get_free_port(db, start, end)
-            db.commit()
+            try:
+                plugin.port = self._get_free_port(db, start, end)
+                db.commit()
+            except Exception as e:
+                plugin.status = "failed"
+                plugin.last_error = str(e)
+                db.commit()
+                return False
 
         plugin_path = Path(plugin.path)
         venv_path = plugin_path / "venv"
@@ -114,13 +139,17 @@ class PluginManager:
             return False
 
     def stop_plugin(self, plugin, db):
+        import psutil
+
         proc = self.running_processes.get(plugin.id)
         if proc:
-            proc.terminate()
             try:
-                proc.wait(timeout=5)
-            except:
-                proc.kill()
+                parent = psutil.Process(proc.pid)
+                for child in parent.children(recursive=True):
+                    child.kill()
+                parent.kill()
+            except psutil.NoSuchProcess:
+                pass
             del self.running_processes[plugin.id]
 
         plugin.status = "stopped"
@@ -134,7 +163,6 @@ class PluginManager:
 
         while True:
             try:
-                # Run DB fetch in a separate thread so it doesn't block the async loop
                 def get_plugins():
                     db = db_maker()
                     try:
