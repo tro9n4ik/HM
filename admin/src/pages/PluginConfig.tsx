@@ -53,18 +53,38 @@ export function PluginConfig() {
         {Object.entries(config).map(([key, value]) => {
           const fieldDef = schema[key] || {};
           const isSecret = fieldDef.type === "secret";
+          const isBoolean = fieldDef.type === "bool" || fieldDef.type === "boolean";
+          const isJson = fieldDef.type === "json";
+
           return (
             <div className="mb-4" key={key}>
               <label className="block mb-2 text-gray-300">
                 {fieldDef.title || key} {fieldDef.description && <span className="text-gray-500 text-sm ml-2">- {fieldDef.description}</span>}
               </label>
-              <input
-                type={isSecret && value !== "***" ? "password" : "text"}
-                value={value as string}
-                onChange={e => setConfig({...config, [key]: e.target.value})}
-                placeholder={isSecret ? "***" : ""}
-                className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
-              />
+
+              {isBoolean ? (
+                 <input
+                   type="checkbox"
+                   checked={value === true || value === "true"}
+                   onChange={e => setConfig({...config, [key]: e.target.checked})}
+                   className="w-5 h-5 bg-gray-700 border-gray-600 rounded text-blue-600"
+                 />
+              ) : isJson ? (
+                 <textarea
+                   value={typeof value === 'object' ? JSON.stringify(value, null, 2) : value as string}
+                   onChange={e => setConfig({...config, [key]: e.target.value})}
+                   rows={4}
+                   className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white font-mono"
+                 />
+              ) : (
+                <input
+                  type={isSecret && value !== "***" ? "password" : "text"}
+                  value={value as string}
+                  onChange={e => setConfig({...config, [key]: e.target.value})}
+                  placeholder={isSecret ? "***" : ""}
+                  className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                />
+              )}
             </div>
           );
         })}

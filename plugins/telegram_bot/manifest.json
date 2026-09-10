@@ -1,0 +1,17 @@
+{
+  "name": "telegram_bot",
+  "version": "1.0.0",
+  "config_schema": {
+    "BOT_TOKEN": {
+      "type": "secret",
+      "title": "Telegram Bot Token",
+      "description": "Token from @BotFather"
+    },
+    "ALLOWED_USERS": {
+      "type": "json",
+      "title": "Allowed Users",
+      "description": "List of allowed Telegram User IDs (e.g. [123456789])",
+      "default": "[]"
+    }
+  }
+}
