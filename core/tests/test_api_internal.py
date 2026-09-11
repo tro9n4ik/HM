@@ -5,11 +5,7 @@ from app.models.plugin import Plugin
 from app.database import Base, engine, SessionLocal
 import json
 
-# Ensure request.client.host is overridden for TestClient
-# TestClient defaults to "testclient"
 from app.api.internal import verify_internal
-
-app.dependency_overrides[verify_internal] = lambda: None
 
 client = TestClient(app)
 
@@ -25,15 +21,24 @@ def setup_database():
     db.close()
     Base.metadata.drop_all(bind=engine)
 
-def test_list_internal_plugins():
+def test_list_internal_plugins_unauthorized():
+    # Since TestClient defaults to host "testclient" (not "127.0.0.1"), this should return 403
     response = client.get("/api/internal/plugins")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) >= 1
+    assert response.status_code == 403
 
-    # Test plugin exists in response
-    test_plugin = next((p for p in data if p["name"] == "test_plugin"), None)
-    assert test_plugin is not None
-    assert test_plugin["port"] == 8001
-    assert test_plugin["url"] == "http://127.0.0.1:8001"
-    assert "config_schema" in test_plugin["manifest"]
+def test_list_internal_plugins():
+    app.dependency_overrides[verify_internal] = lambda: None
+    try:
+        response = client.get("/api/internal/plugins")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 1
+
+        # Test plugin exists in response
+        test_plugin = next((p for p in data if p["name"] == "test_plugin"), None)
+        assert test_plugin is not None
+        assert test_plugin["port"] == 8001
+        assert test_plugin["url"] == "http://127.0.0.1:8001"
+        assert "config_schema" in test_plugin["manifest"]
+    finally:
+        app.dependency_overrides.pop(verify_internal, None)

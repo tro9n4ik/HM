@@ -5,7 +5,8 @@
     "BOT_TOKEN": {
       "type": "secret",
       "title": "Telegram Bot Token",
-      "description": "Token from @BotFather"
+      "description": "Token from @BotFather",
+      "default": ""
     },
     "ALLOWED_USERS": {
       "type": "json",

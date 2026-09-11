@@ -14,3 +14,4 @@ websockets==17.1
 python-multipart==0.0.32
 psutil==7.2.2
 psycopg[binary]==3.1.18
+pytest-asyncio==1.4.0
