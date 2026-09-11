@@ -17,12 +17,10 @@ def override_get_db():
 def override_get_current_user():
     return User(username="admin")
 
-app.dependency_overrides[get_db] = override_get_db
-app.dependency_overrides[get_current_user] = override_get_current_user
-client = TestClient(app)
-
 @pytest.fixture(autouse=True)
 def run_around_tests():
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
     os.environ["SECRET_KEY"] = "test-secret"
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
@@ -34,18 +32,23 @@ def run_around_tests():
     db.commit()
     db.close()
     yield
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_current_user, None)
     Base.metadata.drop_all(bind=engine)
 
 def test_proxy_stopped_plugin():
+    client = TestClient(app)
     response = client.get("/plugins/stopped_plugin/test")
     assert response.status_code == 502
 
 def test_proxy_not_found():
+    client = TestClient(app)
     response = client.get("/plugins/unknown_plugin/test")
     assert response.status_code == 404
 
 def test_proxy_unauthorized():
     app.dependency_overrides.pop(get_current_user, None)
+    client = TestClient(app)
 
     response = client.get("/plugins/example/test")
     assert response.status_code == 401
@@ -55,6 +58,7 @@ def test_proxy_unauthorized():
 def test_proxy_websocket_unauthorized():
     from starlette.websockets import WebSocketDisconnect
     app.dependency_overrides.pop(get_current_user, None)
+    client = TestClient(app)
 
     with pytest.raises(WebSocketDisconnect) as exc_info:
         with client.websocket_connect("/plugins/example/test"):
