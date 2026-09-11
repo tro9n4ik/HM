@@ -47,3 +47,20 @@ async def test_plugin_app_resolve_plugin(mock_env):
         assert target is not None
         assert target["url"] == "http://127.0.0.1:8005"
         mock_get.assert_called_with("http://test-core:8000/api/internal/plugins", timeout=5.0)
+
+def test_plugin_app_healthcheck():
+    from fastapi.testclient import TestClient
+    app = PluginApp("test_health")
+    client = TestClient(app)
+
+    # Default is ok
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+    # Degraded
+    app.ready = False
+    app.ready_detail = "Missing config"
+    resp2 = client.get("/health")
+    assert resp2.status_code == 503
+    assert resp2.json() == {"status": "degraded", "detail": "Missing config"}
