@@ -81,7 +81,7 @@ class PluginManager:
     def start_plugin(self, plugin, db) -> bool:
         import subprocess
         import os
-        from app.models.system import SystemSetting
+        from app.models.system import SystemSetting, ActivityLog
 
         if plugin.port is None:
             port_range_setting = db.query(SystemSetting).filter_by(key="plugin_port_range").first()
@@ -130,16 +130,19 @@ class PluginManager:
             self.running_processes[plugin.id] = proc
 
             plugin.status = "starting"
+            db.add(ActivityLog(source="plugin_manager", message=f"Started plugin: {plugin.name} (v{plugin.version})"))
             db.commit()
             return True
         except Exception as e:
             plugin.status = "failed"
             plugin.last_error = str(e)
+            db.add(ActivityLog(source="plugin_manager", message=f"Failed to start plugin: {plugin.name}. Error: {e}"))
             db.commit()
             return False
 
     def stop_plugin(self, plugin, db):
         import psutil
+        from app.models.system import ActivityLog
 
         proc = self.running_processes.get(plugin.id)
         if proc:
@@ -153,6 +156,7 @@ class PluginManager:
             del self.running_processes[plugin.id]
 
         plugin.status = "stopped"
+        db.add(ActivityLog(source="plugin_manager", message=f"Stopped plugin: {plugin.name} (v{plugin.version})"))
         db.commit()
 
     async def healthcheck_loop(self, db_maker):

@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -108,3 +109,72 @@ def get_system_info(db: Session = Depends(get_db), current_user=Depends(get_curr
         "version": "1.0.0",
         "plugins_count": db.query(Plugin).count()
     }
+
+import psutil
+
+def _human_bytes(size: int) -> str:
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} PB"
+
+@router.get("/stats")
+def get_stats(current_user=Depends(get_current_user)):
+    cpu_percent = psutil.cpu_percent(interval=0.3)
+    vm = psutil.virtual_memory()
+    disk = psutil.disk_usage(os.environ.get("DATA_DIR", "/"))
+
+    try:
+        load_avg = f"{os.getloadavg()[0]:.2f}"
+    except AttributeError:
+        load_avg = "--"
+
+    return {
+        "cpu": {"percent": cpu_percent, "load": load_avg},
+        "memory": {
+            "percent": vm.percent,
+            "used": _human_bytes(vm.used),
+            "total": _human_bytes(vm.total),
+        },
+        "storage": {
+            "percent": disk.percent,
+            "used": _human_bytes(disk.used),
+            "total": _human_bytes(disk.total),
+        },
+    }
+
+@router.get("/health")
+def get_health(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    plugins = db.query(Plugin).all()
+    checks = []
+
+    # Internal DB check as a baseline
+    try:
+        db.execute(text("SELECT 1"))
+        checks.append({"name": "Database", "status": "ok", "message": "connected"})
+    except Exception as e:
+        checks.append({"name": "Database", "status": "error", "message": str(e)})
+
+    for p in plugins:
+        if p.status == "running":
+            checks.append({"name": f"Plugin: {p.name}", "status": "ok", "message": "running"})
+        elif p.status == "degraded":
+            checks.append({"name": f"Plugin: {p.name}", "status": "error", "message": "degraded"})
+        elif p.status == "failed":
+            checks.append({"name": f"Plugin: {p.name}", "status": "error", "message": p.last_error or "failed"})
+        # We don't include stopped/starting in health errors for now
+
+    return checks
+
+from app.models.system import ActivityLog
+
+@router.get("/activity")
+def get_activity(limit: int = 10, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    events = db.query(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(limit).all()
+    # Format according to frontend expectations
+    return [{
+        "time": e.timestamp.strftime("%H:%M:%S"),
+        "message": e.message,
+        "source": e.source
+    } for e in events]
