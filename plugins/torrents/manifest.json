@@ -1,0 +1,39 @@
+{
+  "name": "torrents",
+  "version": "1.0.0",
+  "description": "Integration with TMDb, Prowlarr and qBittorrent for unified media downloads.",
+  "config_schema": {
+    "tmdb_api_key": {
+      "type": "string",
+      "secret": true,
+      "default": ""
+    },
+    "prowlarr_url": {
+      "type": "string",
+      "default": "http://prowlarr.local:9696"
+    },
+    "prowlarr_api_key": {
+      "type": "string",
+      "secret": true,
+      "default": ""
+    },
+    "qbit_url": {
+      "type": "string",
+      "default": "http://qbittorrent.local:8080"
+    },
+    "qbit_username": {
+      "type": "string",
+      "default": "admin"
+    },
+    "qbit_password": {
+      "type": "string",
+      "secret": true,
+      "default": "adminadmin"
+    },
+    "categories": {
+      "type": "json",
+      "default": "[\"movies\", \"tv\", \"anime\"]"
+    }
+  },
+  "web_ui": true
+}
