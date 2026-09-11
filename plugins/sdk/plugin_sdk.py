@@ -14,6 +14,8 @@ class Config:
     def to_dict(self):
         return self._data
 
+from fastapi.responses import JSONResponse
+
 class PluginApp(FastAPI):
     def __init__(self, name: str, *args, **kwargs):
         super().__init__(title=name, *args, **kwargs)
@@ -22,9 +24,16 @@ class PluginApp(FastAPI):
         self.port = int(os.environ.get("PLUGIN_PORT", "8100"))
         self.plugin_id = os.environ.get("PLUGIN_ID", self.plugin_name)
         self.config = Config({})
+        self.ready = True
+        self.ready_detail = None
 
         @self.get("/health")
         def healthcheck():
+            if not self.ready:
+                return JSONResponse(
+                    {"status": "degraded", "detail": self.ready_detail},
+                    status_code=503
+                )
             return {"status": "ok"}
 
         @self.on_event("startup")

@@ -20,20 +20,6 @@ ptb_app = None
 # Await text state: map from user_id -> dict with pending callback metadata
 _pending_text_input = {}
 
-@app.get("/health")
-def healthcheck():
-    bot_token = app.config.get("BOT_TOKEN")
-    bot_running = ptb_app is not None
-
-    if not bot_token or not bot_running:
-        from fastapi import Response
-        return Response(
-            content=json.dumps({"status": "degraded", "bot_running": False, "error": "BOT_TOKEN missing"}),
-            status_code=503,
-            media_type="application/json"
-        )
-    return {"status": "ok", "bot_running": True}
-
 def get_allowed_users() -> list[int]:
     allowed_json = app.config.get("ALLOWED_USERS", "[]")
     try:
@@ -231,6 +217,8 @@ async def start_bot():
     bot_token = app.config.get("BOT_TOKEN")
     if not bot_token:
         print("BOT_TOKEN missing. Telegram bot won't start.")
+        app.ready = False
+        app.ready_detail = "BOT_TOKEN not configured"
         return
 
     ptb_app = Application.builder().token(bot_token).build()
