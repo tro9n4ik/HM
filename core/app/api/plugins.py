@@ -58,11 +58,12 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
 
         plugin = db.query(Plugin).filter(Plugin.name == plugin_name).first()
         if not plugin:
-            plugin = Plugin(name=plugin_name, version=version, path=extract_path)
+            plugin = Plugin(name=plugin_name, version=version, path=extract_path, manifest=json.dumps(manifest))
             db.add(plugin)
         else:
             plugin.version = version
             plugin.path = extract_path
+            plugin.manifest = json.dumps(manifest)
 
         db.commit()
         db.refresh(plugin)
@@ -138,14 +139,39 @@ def update_config(plugin_id: str, req: ConfigUpdate, db: Session = Depends(get_d
     if not plugin:
         raise HTTPException(status_code=404, detail="Plugin not found")
 
+    import json
+    schema = {}
+    if plugin.manifest:
+        try:
+            manifest_data = json.loads(plugin.manifest)
+            schema = manifest_data.get("config_schema", {})
+        except Exception:
+            pass
+
     for key, value in req.config.items():
         if value == "***":
             continue
+
+        field_def = schema.get(key, {})
+        is_secret = field_def.get("type") == "secret"
+
+        # basic validation based on type
+        if field_def.get("type") == "json":
+             try:
+                 json.loads(value)
+             except Exception:
+                 raise HTTPException(status_code=400, detail=f"Invalid JSON for key {key}")
+
+
+        # Format booleans explicitly for frontend compatibility
+        str_val = "true" if value is True else "false" if value is False else str(value)
+
         config_entry = db.query(PluginConfig).filter(PluginConfig.plugin_id == plugin_id, PluginConfig.key == key).first()
         if config_entry:
-            config_entry.value = value
+            config_entry.value = str_val
+            config_entry.is_secret = is_secret
         else:
-            config_entry = PluginConfig(plugin_id=plugin_id, key=key, value=value)
+            config_entry = PluginConfig(plugin_id=plugin_id, key=key, value=str_val, is_secret=is_secret)
             db.add(config_entry)
 
     db.commit()

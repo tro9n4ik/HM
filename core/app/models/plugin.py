@@ -13,6 +13,7 @@ class Plugin(Base):
     path = Column(String, nullable=False)
     autostart = Column(Boolean, default=False)
     last_error = Column(String, nullable=True)
+    manifest = Column(String, nullable=True)
     installed_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class PluginConfig(Base):
