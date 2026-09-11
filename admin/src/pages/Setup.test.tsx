@@ -10,8 +10,8 @@ describe('Setup', () => {
         <Setup />
       </BrowserRouter>
     );
-    expect(screen.getByText('Home.Media Setup')).toBeDefined();
-    expect(screen.getByText('Admin Username')).toBeDefined();
-    expect(screen.getByText('Password')).toBeDefined();
+    expect(screen.getByText('Первоначальная настройка')).toBeDefined();
+    expect(screen.getByText('Имя администратора')).toBeDefined();
+    expect(screen.getByText('Пароль')).toBeDefined();
   });
 });
