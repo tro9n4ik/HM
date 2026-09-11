@@ -1,0 +1,41 @@
+{
+  "name": "home_assistant",
+  "version": "1.0.0",
+  "description": "Integration with Home Assistant (Web + Telegram UI)",
+  "config_schema": {
+    "ha_url": {
+      "type": "string",
+      "default": "http://homeassistant.local:8123"
+    },
+    "ha_token": {
+      "type": "string",
+      "secret": true,
+      "default": ""
+    },
+    "poll_seconds": {
+      "type": "integer",
+      "default": 30
+    },
+    "brightness_step": {
+      "type": "integer",
+      "default": 10
+    },
+    "temp_step": {
+      "type": "float",
+      "default": 0.5
+    },
+    "volume_step": {
+      "type": "float",
+      "default": 0.1
+    },
+    "hide": {
+      "type": "json",
+      "default": "[]"
+    },
+    "tg_groups": {
+      "type": "json",
+      "default": "{}"
+    }
+  },
+  "web_ui": true
+}

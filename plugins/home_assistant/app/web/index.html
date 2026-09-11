@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f9fafb; font-family: sans-serif; }
+        .dark-mode { background-color: #111827; color: #f9fafb; }
+        .card { background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
+        .dark-mode .card { background-color: #1f2937; border-color: #374151; }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #d1d5db;
+            border-radius: 2px;
+        }
+        .dark-mode input[type=range]::-webkit-slider-runnable-track {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="dark-mode p-6 text-gray-100">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <span class="bg-blue-600 text-white p-1 rounded text-sm">HA</span>
+                Устройства
+            </h1>
+            <div id="status-badge" class="px-3 py-1 rounded text-sm font-medium bg-gray-700 text-gray-300">
+                Загрузка...
+            </div>
+        </header>
+
+        <div id="error-banner" class="hidden mb-6 bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded">
+        </div>
+
+        <div id="domains-container" class="space-y-8">
+            <!-- Dynamic content injected here -->
+        </div>
+    </div>
+
+    <script>
+        const getBasePath = () => {
+            const path = window.location.pathname;
+            return path.replace(/\/+$/, '').replace(/\/index\.html$/, '');
+        };
+        const basePath = getBasePath();
+
+        let state = {
+            entities: [],
+            status: null
+        };
+
+        const fetchStatus = async () => {
+            try {
+                const res = await fetch(`${basePath}/status`);
+                state.status = await res.json();
+
+                const badge = document.getElementById('status-badge');
+                if (state.status.ready) {
+                    badge.className = 'px-3 py-1 rounded text-sm font-medium bg-emerald-900 text-emerald-300 border border-emerald-700';
+                    badge.innerText = 'Подключено';
+                    document.getElementById('error-banner').classList.add('hidden');
+                } else {
+                    badge.className = 'px-3 py-1 rounded text-sm font-medium bg-red-900 text-red-300 border border-red-700';
+                    badge.innerText = 'Ошибка';
+
+                    const banner = document.getElementById('error-banner');
+                    banner.innerText = state.status.last_error || 'Неизвестная ошибка подключения к HA';
+                    banner.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        const fetchEntities = async () => {
+            if (!state.status || !state.status.ready) return;
+            try {
+                const res = await fetch(`${basePath}/api/entities`);
+                state.entities = await res.json();
+                renderEntities();
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        const controlEntity = async (entity_id, service, service_data = {}) => {
+            try {
+                await fetch(`${basePath}/api/control`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ entity_id, service, service_data })
+                });
+                setTimeout(fetchEntities, 500); // quick refresh after action
+            } catch (e) {
+                console.error('Control failed', e);
+            }
+        };
+
+        const renderEntities = () => {
+            const container = document.getElementById('domains-container');
+
+            // Group by domain
+            const groups = {};
+            state.entities.forEach(ent => {
+                const domain = ent.entity_id.split('.')[0];
+                if (!groups[domain]) groups[domain] = [];
+                groups[domain].append(ent);
+            });
+
+            // Map standard entities, fixing `.append` bug in JS
+            const grouped = state.entities.reduce((acc, ent) => {
+                const domain = ent.entity_id.split('.')[0];
+                if (!acc[domain]) acc[domain] = [];
+                acc[domain].push(ent);
+                return acc;
+            }, {});
+
+            container.innerHTML = '';
+
+            for (const [domain, items] of Object.entries(grouped)) {
+                if (items.length === 0) continue;
+
+                const section = document.createElement('div');
+
+                const title = document.createElement('h2');
+                title.className = 'text-lg font-semibold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2';
+                title.innerText = domain;
+                section.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+
+                items.forEach(ent => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-4 flex flex-col justify-between gap-4';
+
+                    const name = ent.attributes.friendly_name || ent.entity_id;
+                    const isOn = ['on', 'open', 'playing', 'unlocked'].includes(ent.state);
+
+                    let iconHtml = `<div class="w-3 h-3 rounded-full ${isOn ? 'bg-emerald-500' : 'bg-gray-500'}"></div>`;
+
+                    let controlsHtml = '';
+                    if (['light', 'switch', 'input_boolean'].includes(domain)) {
+                        controlsHtml = `
+                            <button onclick="controlEntity('${ent.entity_id}', 'toggle')"
+                                class="px-4 py-2 rounded text-sm font-medium transition-colors ${isOn ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}">
+                                ${isOn ? 'Выключить' : 'Включить'}
+                            </button>
+                        `;
+
+                        if (domain === 'light' && ent.attributes.brightness !== undefined) {
+                            controlsHtml += `
+                                <div class="mt-4 flex items-center gap-3">
+                                    <span class="text-xs text-gray-400">☀️</span>
+                                    <input type="range" min="0" max="255" value="${ent.attributes.brightness}"
+                                        onchange="controlEntity('${ent.entity_id}', 'turn_on', {brightness: this.value})">
+                                </div>
+                            `;
+                        }
+                    } else if (domain === 'climate') {
+                        controlsHtml = `
+                            <div class="text-xs text-gray-400 mb-2">Целевая: ${ent.attributes.temperature || '--'}°C</div>
+                            <div class="flex gap-2">
+                                <button onclick="controlEntity('${ent.entity_id}', 'set_temperature', {temperature: ${(ent.attributes.temperature || 20) - 0.5}})" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">-</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'set_temperature', {temperature: ${(ent.attributes.temperature || 20) + 0.5}})" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">+</button>
+                            </div>
+                        `;
+                    } else if (domain === 'media_player') {
+                        controlsHtml = `
+                            <button onclick="controlEntity('${ent.entity_id}', 'media_play_pause')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium">⏯ Play/Pause</button>
+                        `;
+                    } else if (domain === 'cover') {
+                        controlsHtml = `
+                            <div class="flex gap-2">
+                                <button onclick="controlEntity('${ent.entity_id}', 'open_cover')" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">⬆️</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'stop_cover')" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">⏹️</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'close_cover')" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">⬇️</button>
+                            </div>
+                        `;
+                    } else {
+                        // Sensors or unknown domains just show state
+                        controlsHtml = `<div class="text-lg font-medium">${ent.state} <span class="text-sm text-gray-400">${ent.attributes.unit_of_measurement || ''}</span></div>`;
+                    }
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                ${iconHtml}
+                                <h3 class="font-medium text-gray-100 truncate" title="${name}">${name}</h3>
+                            </div>
+                            <div class="text-xs text-gray-500 font-mono truncate">${ent.entity_id}</div>
+                        </div>
+                        <div>
+                            ${controlsHtml}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            }
+        };
+
+        // Main Loop
+        const init = async () => {
+            await fetchStatus();
+            await fetchEntities();
+            setInterval(async () => {
+                await fetchStatus();
+                await fetchEntities();
+            }, 5000);
+        };
+
+        init();
+    </script>
+</body>
+</html>
