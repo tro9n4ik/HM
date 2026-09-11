@@ -24,13 +24,13 @@ describe('App Integration', () => {
     render(<App />);
 
     // Should show Setup screen
-    expect(await screen.findByRole('heading', { name: /Home.Media Setup/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Первоначальная настройка/i })).toBeInTheDocument();
 
     const user = userEvent.setup();
-    const passwordInput = screen.getByLabelText(/Password/i);
+    const passwordInput = screen.getByLabelText(/Пароль/i);
     await user.type(passwordInput, 'secretpassword');
 
-    const submitBtn = screen.getByRole('button', { name: /Create Admin Account/i });
+    const submitBtn = screen.getByRole('button', { name: /Создать аккаунт/i });
     await user.click(submitBtn);
 
     // Verify API was called
@@ -40,7 +40,7 @@ describe('App Integration', () => {
     });
 
     // We should now see the Login screen, NOT loop back to Setup
-    expect(await screen.findByRole('heading', { name: /Home.Media Login/i })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /Home.Media Setup/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Вход в систему/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Первоначальная настройка/i })).not.toBeInTheDocument();
   });
 });
