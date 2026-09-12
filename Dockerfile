@@ -27,6 +27,7 @@ COPY --from=frontend-builder /app/core/app/web/static/admin /app/core/app/web/st
 
 # Copy backend code
 COPY core /app/core
+COPY plugins /app/plugins
 COPY docker-entrypoint.sh /app/
 
 # Set working directory to root so entrypoint script can run
