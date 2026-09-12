@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { Search, RotateCcw, MoreHorizontal } from 'lucide-react';
+import { Search, RotateCcw, MoreHorizontal, Play, Square, Trash2 } from 'lucide-react';
 
 export function Dashboard() {
   const [plugins, setPlugins] = useState<any[]>([]);
@@ -13,6 +13,12 @@ export function Dashboard() {
   const [healthChecks, setHealthChecks] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
 
+  // State to track which plugin's dropdown menu is open
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Ref for handling click outside
+  const menuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const fetchPlugins = async () => {
       try {
@@ -23,8 +29,6 @@ export function Dashboard() {
       }
     };
 
-    // To prevent mocking fake data, we fetch real data or show empty state placeholders.
-    // Assuming backend endpoints don't exist yet for these full metrics, we'll keep placeholders.
     const fetchSystemData = async () => {
       try {
         const statsRes = await axios.get('/api/system/stats').catch(() => null);
@@ -48,6 +52,48 @@ export function Dashboard() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Handle click outside to close menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuRef]);
+
+  const handleDelete = async (plugin: any) => {
+    if (window.confirm(`Удалить плагин ${plugin.name}? Это действие нельзя отменить.`)) {
+      try {
+        if (plugin.status === 'running' || plugin.status === 'degraded') {
+          await axios.post(`/api/plugins/${plugin.id}/stop`);
+        }
+        await axios.delete(`/api/plugins/${plugin.id}`);
+        const res = await axios.get('/api/plugins');
+        setPlugins(res.data);
+      } catch (e: any) {
+        alert("Ошибка удаления: " + (e.response?.data?.detail || e.message));
+      }
+    }
+    setOpenMenuId(null);
+  };
+
+  const handleStartStop = async (plugin: any) => {
+    try {
+      if (plugin.status === 'running' || plugin.status === 'degraded') {
+        await axios.post(`/api/plugins/${plugin.id}/stop`);
+      } else {
+        await axios.post(`/api/plugins/${plugin.id}/start`);
+      }
+      const res = await axios.get('/api/plugins');
+      setPlugins(res.data);
+    } catch (e: any) {
+       alert("Ошибка: " + (e.response?.data?.detail || e.message));
+    }
+    setOpenMenuId(null);
+  };
 
   const runningCount = plugins.filter(p => p.status === 'running').length;
   const cpuPercent = systemStats?.cpu?.percent || 0;
@@ -120,7 +166,7 @@ export function Dashboard() {
       </div>
 
       {/* Main Services List */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-8">
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm mb-8" ref={menuRef}>
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex gap-6 text-sm">
             <div className="font-semibold text-gray-900 border-b-2 border-gray-900 pb-4 -mb-4">Все ({plugins.length})</div>
@@ -144,7 +190,6 @@ export function Dashboard() {
                   formData.append('file', file);
 
                   try {
-                    // Could add a loading state here if we wanted to get fancy
                     await axios.post('/api/plugins/install', formData);
                     const res = await axios.get('/api/plugins');
                     setPlugins(res.data);
@@ -179,15 +224,38 @@ export function Dashboard() {
                 </td>
                 <td className="px-6 py-4 text-gray-600">v{p.version}</td>
                 <td className="px-6 py-4 text-gray-600">{p.status}</td>
-                <td className="px-6 py-4 text-right flex items-center justify-end gap-3">
+                <td className="px-6 py-4 text-right flex items-center justify-end gap-3 relative">
                   <Link to={`/plugins/${p.id}/logs`} className="text-gray-400 hover:text-gray-600">Логи</Link>
                   <Link to={`/plugins/${p.id}/config`} className="text-gray-400 hover:text-gray-600">Настройки</Link>
                   <button onClick={() => axios.post(`/api/plugins/${p.id}/restart`)} className="text-gray-400 hover:text-gray-600">
                     <RotateCcw className="w-4 h-4" />
                   </button>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
+                  <div className="relative">
+                    <button
+                        onClick={() => setOpenMenuId(openMenuId === p.id ? null : p.id)}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    {openMenuId === p.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10 py-1">
+                           <button
+                              onClick={() => handleStartStop(p)}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                           >
+                              {p.status === 'running' || p.status === 'degraded' ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                              {p.status === 'running' || p.status === 'degraded' ? 'Остановить' : 'Запустить'}
+                           </button>
+                           <button
+                              onClick={() => handleDelete(p)}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100"
+                           >
+                              <Trash2 className="w-4 h-4" />
+                              Удалить
+                           </button>
+                        </div>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
