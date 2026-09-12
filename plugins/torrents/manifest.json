@@ -4,8 +4,7 @@
   "description": "Integration with TMDb, Prowlarr and qBittorrent for unified media downloads.",
   "config_schema": {
     "tmdb_api_key": {
-      "type": "string",
-      "secret": true,
+      "type": "secret",
       "default": ""
     },
     "prowlarr_url": {
@@ -13,8 +12,7 @@
       "default": "http://prowlarr.local:9696"
     },
     "prowlarr_api_key": {
-      "type": "string",
-      "secret": true,
+      "type": "secret",
       "default": ""
     },
     "qbit_url": {
@@ -26,9 +24,8 @@
       "default": "admin"
     },
     "qbit_password": {
-      "type": "string",
-      "secret": true,
-      "default": "adminadmin"
+      "type": "secret",
+      "default": ""
     },
     "categories": {
       "type": "json",

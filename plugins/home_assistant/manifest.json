@@ -8,8 +8,7 @@
       "default": "http://homeassistant.local:8123"
     },
     "ha_token": {
-      "type": "string",
-      "secret": true,
+      "type": "secret",
       "default": ""
     },
     "poll_seconds": {

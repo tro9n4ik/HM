@@ -126,13 +126,36 @@ export function Dashboard() {
             <div className="font-semibold text-gray-900 border-b-2 border-gray-900 pb-4 -mb-4">Все ({plugins.length})</div>
             <div className="text-gray-500 hover:text-gray-900 cursor-pointer pb-4 -mb-4">Работают ({runningCount})</div>
           </div>
-          <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2" />
-            <input
-              type="text"
-              placeholder="Фильтр..."
-              className="pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 w-64"
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2" />
+              <input
+                type="text"
+                placeholder="Фильтр..."
+                className="pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 w-64"
+              />
+            </div>
+            <label className="cursor-pointer bg-emerald-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-emerald-700 transition-colors">
+              Установить плагин
+              <input type="file" className="hidden" accept=".hm" onChange={async (e) => {
+                if (e.target.files && e.target.files[0]) {
+                  const file = e.target.files[0];
+                  const formData = new FormData();
+                  formData.append('file', file);
+
+                  try {
+                    // Could add a loading state here if we wanted to get fancy
+                    await axios.post('/api/plugins/install', formData);
+                    const res = await axios.get('/api/plugins');
+                    setPlugins(res.data);
+                    alert("Плагин успешно установлен");
+                  } catch (err: any) {
+                    alert("Ошибка установки: " + (err.response?.data?.detail || err.message));
+                  }
+                  e.target.value = ''; // Reset input
+                }
+              }} />
+            </label>
           </div>
         </div>
 

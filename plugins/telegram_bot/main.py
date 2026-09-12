@@ -5,8 +5,6 @@ import asyncio
 import httpx
 from typing import Dict, Any
 
-# Add sdk to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sdk')))
 from plugin_sdk import PluginApp
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
