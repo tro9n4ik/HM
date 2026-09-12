@@ -36,25 +36,31 @@ class PluginManager:
 
                 zip_ref.extract(member, plugin_path)
 
+        # Inject SDK into the plugin root
+        sdk_source = Path(__file__).parent.parent.parent.parent / "plugins" / "sdk" / "plugin_sdk.py"
+        if sdk_source.exists():
+            shutil.copy2(sdk_source, plugin_path / "plugin_sdk.py")
+
         return str(plugin_path)
 
     def setup_environment(self, plugin_path_str: str, pip_index_url: str = None) -> bool:
         import subprocess
         import sys
 
-        plugin_path = Path(plugin_path_str)
+        plugin_path = Path(plugin_path_str).resolve()
         venv_path = plugin_path / "venv"
 
         try:
+            # Create venv without --symlinks if needed, but standard is fine
             subprocess.run([sys.executable, "-m", "venv", str(venv_path)], check=True, capture_output=True)
 
             req_path = plugin_path / "requirements.txt"
             if req_path.exists():
-                pip_exe = venv_path / "bin" / "pip"
+                python_exe = venv_path / "bin" / "python"
                 if os.name == "nt":
-                    pip_exe = venv_path / "Scripts" / "pip.exe"
+                    python_exe = venv_path / "Scripts" / "python.exe"
 
-                cmd = [str(pip_exe), "install", "-r", str(req_path)]
+                cmd = [str(python_exe), "-m", "pip", "install", "-r", str(req_path)]
                 if pip_index_url:
                     cmd.extend(["-i", pip_index_url])
 
@@ -101,11 +107,11 @@ class PluginManager:
                 db.commit()
                 return False
 
-        plugin_path = Path(plugin.path)
+        plugin_path = Path(plugin.path).resolve()
         venv_path = plugin_path / "venv"
-        python_exe = venv_path / "bin" / "python"
+        python_exe = (venv_path / "bin" / "python").resolve()
         if os.name == "nt":
-            python_exe = venv_path / "Scripts" / "python.exe"
+            python_exe = (venv_path / "Scripts" / "python.exe").resolve()
 
         main_py = plugin_path / "main.py"
 

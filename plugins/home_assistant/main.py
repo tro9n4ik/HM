@@ -2,9 +2,6 @@ import os
 import sys
 from pathlib import Path
 
-# Fix python path for local execution during dev
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
 import httpx
 import hashlib
 import json
@@ -13,7 +10,7 @@ from threading import Lock
 from typing import Dict, Any, List
 from fastapi import Request
 from fastapi.responses import JSONResponse, FileResponse
-from plugins.sdk.plugin_sdk import PluginApp
+from plugin_sdk import PluginApp
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)

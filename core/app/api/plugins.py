@@ -56,6 +56,14 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
         else:
             raise HTTPException(status_code=400, detail="manifest.json is missing from package")
 
+        # Setup environment before finalizing installation
+        setting = db.query(SystemSetting).filter_by(key="pip_index_url").first()
+        pip_mirror = setting.value if setting else None
+
+        success = plugin_manager.setup_environment(extract_path, pip_index_url=pip_mirror)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to setup virtual environment for plugin")
+
         plugin = db.query(Plugin).filter(Plugin.name == plugin_name).first()
         if not plugin:
             plugin = Plugin(name=plugin_name, version=version, path=extract_path, manifest=json.dumps(manifest))
