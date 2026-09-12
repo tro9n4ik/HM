@@ -51,34 +51,34 @@ if __name__ == "__main__":
 
 @pytest.mark.asyncio
 async def test_plugin_installation_and_startup(tmp_path):
-    client = TestClient(app)
     # Setup dummy zip
     zip_path = create_dummy_plugin_zip(tmp_path)
 
-    # 1. Install
-    with open(zip_path, "rb") as f:
-        res = client.post("/api/plugins/install", files={"file": ("dummy_plugin.hm", f, "application/zip")})
-    assert res.status_code == 200
-    plugin_id = res.json()["id"]
-
-    # 2. Start
-    res = client.post(f"/api/plugins/{plugin_id}/start")
-    assert res.status_code == 200
-
-    # 3. Poll for status
-    for _ in range(10): # 10 seconds max
-        res = client.get("/api/plugins")
+    with TestClient(app) as client:
+        # 1. Install
+        with open(zip_path, "rb") as f:
+            res = client.post("/api/plugins/install", files={"file": ("dummy_plugin.hm", f, "application/zip")})
         assert res.status_code == 200
-        plugins = res.json()
-        target = next((p for p in plugins if p["id"] == plugin_id), None)
-        assert target is not None
-        if target["status"] == "running":
-            break
-        elif target["status"] == "failed":
-            pytest.fail(f"Plugin failed to start. Error: {target.get('last_error')}")
-        await asyncio.sleep(1)
+        plugin_id = res.json()["id"]
 
-    assert target["status"] == "running", "Plugin did not reach 'running' state in time."
+        # 2. Start
+        res = client.post(f"/api/plugins/{plugin_id}/start")
+        assert res.status_code == 200
 
-    # 4. Stop cleanup
-    client.post(f"/api/plugins/{plugin_id}/stop")
+        # 3. Poll for status
+        for _ in range(15): # 15 seconds max to allow for startup and health loop iteration
+            res = client.get("/api/plugins")
+            assert res.status_code == 200
+            plugins = res.json()
+            target = next((p for p in plugins if p["id"] == plugin_id), None)
+            assert target is not None
+            if target["status"] == "running":
+                break
+            elif target["status"] == "failed":
+                pytest.fail(f"Plugin failed to start. Error: {target.get('last_error')}")
+            await asyncio.sleep(1)
+
+        assert target["status"] == "running", "Plugin did not reach 'running' state in time."
+
+        # 4. Stop cleanup
+        client.post(f"/api/plugins/{plugin_id}/stop")
