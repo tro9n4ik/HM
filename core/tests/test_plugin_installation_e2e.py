@@ -10,14 +10,14 @@ from app.api.deps import get_current_user
 # Mock auth
 def override_get_current_user():
     return {"username": "admin"}
-app.dependency_overrides[get_current_user] = override_get_current_user
-client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    app.dependency_overrides[get_current_user] = override_get_current_user
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    app.dependency_overrides.pop(get_current_user, None)
 
 def create_dummy_plugin_zip(tmp_path):
     plugin_dir = tmp_path / "dummy_plugin"
@@ -51,6 +51,7 @@ if __name__ == "__main__":
 
 @pytest.mark.asyncio
 async def test_plugin_installation_and_startup(tmp_path):
+    client = TestClient(app)
     # Setup dummy zip
     zip_path = create_dummy_plugin_zip(tmp_path)
 
