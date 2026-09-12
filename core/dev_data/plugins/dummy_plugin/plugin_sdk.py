@@ -36,6 +36,10 @@ class PluginApp(FastAPI):
                 )
             return {"status": "ok"}
 
+        @self.get("/meta")
+        def meta():
+            return {"plugin_id": self.plugin_id, "name": self.plugin_name}
+
         @self.on_event("startup")
         async def on_startup():
             await self._load_config()
