@@ -22,9 +22,31 @@ def test_get_free_port(mock_socket, db, tmp_path):
     assert port == 8100
 
     # Mock a used port
-    p = Plugin(name="test", version="1.0", status="running", port=8100, path="/tmp")
+    p = Plugin(name="test_port", version="1.0", status="running", port=8100, path="/tmp")
     db.add(p)
     db.commit()
 
     port = pm._get_free_port(db, 8100, 8105)
     assert port == 8101
+
+def test_venv_python_resolution(tmp_path):
+    import os
+    pm = PluginManager(str(tmp_path))
+
+    plugin_path_str = str(tmp_path / "test_venv_res")
+    os.makedirs(plugin_path_str, exist_ok=True)
+    with open(os.path.join(plugin_path_str, "requirements.txt"), "w") as f:
+        f.write("fastapi\n")
+
+    pm.setup_environment(plugin_path_str)
+
+    # We want to verify that executing python from the venv resolves to the venv site-packages
+    # and not the global environment. We will just print the path of a built-in module loaded from within the venv
+    import subprocess
+    from pathlib import Path
+
+    venv_python = Path(plugin_path_str) / "venv" / "bin" / "python"
+
+    res = subprocess.run([str(venv_python), "-c", "import fastapi; print(fastapi.__file__)"], capture_output=True, text=True)
+    assert res.returncode == 0
+    assert "venv" in res.stdout, f"fastapi was not loaded from the venv! Output: {res.stdout}"

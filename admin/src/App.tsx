@@ -8,6 +8,8 @@ import { Settings } from './pages/Settings';
 import { PluginConfig } from './pages/PluginConfig';
 import { PluginLogs } from './pages/PluginLogs';
 import { BackupRestore } from './pages/BackupRestore';
+import { Logs } from './pages/Logs';
+import { Databases } from './pages/Databases';
 import { LayoutDashboard, Blocks, Database, ScrollText, Settings as SettingsIcon, LogOut, PanelLeft } from 'lucide-react';
 
 const ProtectedRoute = ({ children, setupRequired }: { children: React.ReactNode, setupRequired: boolean }) => {
@@ -131,6 +133,8 @@ export function App() {
                   <Route path="/plugins" element={<Dashboard />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/backup" element={<BackupRestore />} />
+                  <Route path="/logs" element={<Logs />} />
+                  <Route path="/databases" element={<Databases />} />
                   <Route path="/plugins/:id/config" element={<PluginConfig />} />
                   <Route path="/plugins/:id/logs" element={<PluginLogs />} />
                 </Routes>

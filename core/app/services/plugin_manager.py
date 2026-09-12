@@ -109,9 +109,9 @@ class PluginManager:
 
         plugin_path = Path(plugin.path).resolve()
         venv_path = plugin_path / "venv"
-        python_exe = (venv_path / "bin" / "python").resolve()
+        python_exe = venv_path / "bin" / "python"
         if os.name == "nt":
-            python_exe = (venv_path / "Scripts" / "python.exe").resolve()
+            python_exe = venv_path / "Scripts" / "python.exe"
 
         main_py = plugin_path / "main.py"
 
