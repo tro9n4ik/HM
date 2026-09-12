@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torrents</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f9fafb; font-family: sans-serif; }
+        .dark-mode { background-color: #111827; color: #f9fafb; }
+        .card { background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
+        .dark-mode .card { background-color: #1f2937; border-color: #374151; }
+    </style>
+</head>
+<body class="dark-mode p-6 text-gray-100">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <span class="bg-purple-600 text-white p-1 rounded text-sm">TR</span>
+                Торренты
+            </h1>
+        </header>
+
+        <!-- Search Bar -->
+        <div class="mb-8 flex gap-4">
+            <input type="text" id="searchInput" placeholder="Поиск фильма или сериала (TMDb)..."
+                class="flex-1 p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-purple-500">
+            <button onclick="doSearch()" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded font-medium transition-colors">Искать</button>
+        </div>
+
+        <div id="error-banner" class="hidden mb-6 bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded"></div>
+        <div id="success-banner" class="hidden mb-6 bg-emerald-900/50 border border-emerald-500 text-emerald-200 px-4 py-3 rounded"></div>
+
+        <!-- TMDb Results -->
+        <div id="tmdb-results" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-12">
+            <!-- Populated dynamically -->
+        </div>
+
+        <!-- Releases Section -->
+        <div id="releases-section" class="hidden">
+            <div class="flex justify-between items-end mb-4 border-b border-gray-700 pb-2">
+                <h2 id="releases-title" class="text-xl font-bold text-gray-200">Раздачи</h2>
+
+                <div class="flex gap-4">
+                    <select id="catSelect" class="bg-gray-800 border border-gray-700 rounded p-1 text-sm focus:outline-none">
+                        <option value="">Без категории</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-400 uppercase bg-gray-800 border-b border-gray-700">
+                        <tr>
+                            <th class="px-4 py-3">Название</th>
+                            <th class="px-4 py-3 w-24">Качество</th>
+                            <th class="px-4 py-3 w-32">Озвучка</th>
+                            <th class="px-4 py-3 w-24 text-right">Размер</th>
+                            <th class="px-4 py-3 w-24 text-right">Сиды</th>
+                            <th class="px-4 py-3 w-32 text-right">Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody id="releases-table-body">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const getBasePath = () => {
+            const path = window.location.pathname;
+            return path.replace(/\/+$/, '').replace(/\/index\.html$/, '');
+        };
+        const basePath = getBasePath();
+
+        const formatBytes = (bytes) => {
+            if (bytes === 0) return '0 B';
+            const k = 1024, dm = 2, sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        };
+
+        const showError = (msg) => {
+            const el = document.getElementById('error-banner');
+            el.innerText = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        };
+
+        const showSuccess = (msg) => {
+            const el = document.getElementById('success-banner');
+            el.innerText = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        };
+
+        let currentCategories = [];
+        const loadCategories = async () => {
+            try {
+                const res = await fetch(`${basePath}/api/categories`);
+                const data = await res.json();
+                const sel = document.getElementById('catSelect');
+                data.categories.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.innerText = c;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                console.error("No categories loaded", e);
+            }
+        };
+
+        const doSearch = async () => {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return;
+
+            document.getElementById('releases-section').classList.add('hidden');
+            const container = document.getElementById('tmdb-results');
+            container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Поиск...</div>';
+
+            try {
+                const res = await fetch(`${basePath}/api/search?query=${encodeURIComponent(query)}`);
+                const data = await res.json();
+
+                if (!data.results || data.results.length === 0) {
+                    container.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Ничего не найдено</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                data.results.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card overflow-hidden hover:ring-2 hover:ring-purple-500 cursor-pointer transition-all flex flex-col group';
+                    card.onclick = () => loadReleases(item.title, item.year);
+
+                    const imgUrl = item.poster || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="%234b5563" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>';
+
+                    card.innerHTML = `
+                        <div class="h-64 bg-gray-800 relative">
+                            <img src="${imgUrl}" class="w-full h-full object-cover ${item.poster ? '' : 'p-8 opacity-20'}" />
+                            <div class="absolute bottom-0 w-full bg-gradient-to-t from-gray-900 to-transparent p-3 pt-12">
+                                <span class="bg-gray-800/80 text-xs px-2 py-1 rounded text-gray-300 font-mono">${item.year}</span>
+                            </div>
+                        </div>
+                        <div class="p-3 flex-1 flex flex-col justify-between">
+                            <h3 class="font-medium text-sm leading-tight text-gray-200 group-hover:text-purple-400">${item.title}</h3>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (e) {
+                showError(e.message);
+                container.innerHTML = '';
+            }
+        };
+
+        const loadReleases = async (title, year) => {
+            const section = document.getElementById('releases-section');
+            const tbody = document.getElementById('releases-table-body');
+            const titleEl = document.getElementById('releases-title');
+
+            section.classList.remove('hidden');
+            titleEl.innerText = `Раздачи: ${title} (${year})`;
+            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Поиск в Prowlarr...</td></tr>';
+
+            try {
+                const res = await fetch(`${basePath}/api/releases?title=${encodeURIComponent(title)}&year=${encodeURIComponent(year)}`);
+                const data = await res.json();
+
+                if (!data.releases || data.releases.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Раздач не найдено</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                data.releases.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+
+                    let qClass = 'bg-gray-700 text-gray-300';
+                    if (r.info.quality === '4K') qClass = 'bg-yellow-900/50 text-yellow-500 border border-yellow-700';
+                    if (r.info.quality === '1080p') qClass = 'bg-blue-900/50 text-blue-400 border border-blue-700';
+
+                    const qBadge = `<span class="px-2 py-0.5 rounded text-xs font-mono ${qClass}">${r.info.quality}</span>`;
+                    const hdrBadge = r.info.hdr ? `<span class="ml-1 px-1 py-0.5 rounded text-xs bg-purple-900/30 text-purple-400 border border-purple-800">${r.info.hdr}</span>` : '';
+
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-medium text-gray-200 truncate max-w-xs" title="${r.title}">${r.title}</td>
+                        <td class="px-4 py-3">${qBadge}${hdrBadge}</td>
+                        <td class="px-4 py-3 text-gray-400 text-xs">${r.info.voice}</td>
+                        <td class="px-4 py-3 text-right text-gray-400 font-mono text-xs">${formatBytes(r.size)}</td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="text-emerald-500 font-bold">${r.seeders}</span>
+                            <span class="text-gray-600 text-xs mx-1">/</span>
+                            <span class="text-red-400 text-xs">${r.peers}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <button onclick="download('${r.magnetUrl}')" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium transition-colors">
+                                Скачать
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                showError(e.message);
+                tbody.innerHTML = '';
+            }
+        };
+
+        const download = async (url) => {
+            const cat = document.getElementById('catSelect').value;
+            try {
+                const res = await fetch(`${basePath}/api/download`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ url: url, category: cat })
+                });
+
+                if (res.ok) {
+                    showSuccess("Торрент успешно добавлен в qBittorrent");
+                } else {
+                    const data = await res.json();
+                    showError(data.detail || "Ошибка добавления торрента");
+                }
+            } catch (e) {
+                showError(e.message);
+            }
+        };
+
+        // Init
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') doSearch();
+        });
+        loadCategories();
+    </script>
+</body>
+</html>
