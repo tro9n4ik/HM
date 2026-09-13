@@ -147,20 +147,23 @@ def build_tg_groups() -> Dict[str, List[str]]:
         try: raw_groups = json.loads(raw_groups)
         except: raw_groups = {}
 
-    # Generate auto groups based on domains
-    domains = {}
-    with state.lock:
-        for ent in state.entities:
-            domain = ent["entity_id"].split(".")[0]
-            if domain not in domains:
-                domains[domain] = []
-            domains[domain].append(ent["entity_id"])
+    only_custom = app.config.get("only_custom_groups", False)
+    if isinstance(only_custom, str):
+        only_custom = only_custom.lower() in ("true", "1", "yes")
 
-    # Combine
     final_groups = {}
-    for dom, ents in domains.items():
-        if len(ents) > 0:
-            final_groups[dom.capitalize()] = ents
+
+    if not only_custom:
+        # Generate auto groups based on domains
+        domains = {}
+        with state.lock:
+            for ent in state.entities:
+                domain = ent["entity_id"].split(".")[0]
+                domains.setdefault(domain, []).append(ent["entity_id"])
+
+        for dom, ents in domains.items():
+            if ents:
+                final_groups[dom.capitalize()] = ents
 
     # Apply custom groups if defined (overrides)
     if isinstance(raw_groups, dict) and raw_groups:
