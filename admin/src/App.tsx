@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { registerApiInterceptors, setToastHandler } from './lib/apiClient';
 import { Setup } from './pages/Setup';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -98,16 +99,14 @@ const Sidebar = () => {
 export function App() {
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
 
+  const [toast, setToast] = useState<{message: string; type: string} | null>(null);
+
   useEffect(() => {
-    axios.interceptors.response.use(
-      response => response,
-      error => {
-        if (error.response?.status === 401 && window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      }
-    );
+    setToastHandler((message, type) => {
+      setToast({ message, type });
+      setTimeout(() => setToast(null), 5000);
+    });
+    registerApiInterceptors();
 
     axios.get('/api/system/setup-status')
       .then(res => setSetupRequired(res.data.setup_required))
@@ -117,7 +116,13 @@ export function App() {
   if (setupRequired === null) return <div>Loading...</div>;
 
   return (
-    <Router>
+    <>
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm text-white ${toast.type === 'error' ? 'bg-red-600' : 'bg-amber-500'}`}>
+          {toast.message}
+        </div>
+      )}
+      <Router>
       <Routes>
         <Route path="/setup" element={setupRequired ? <Setup onSetupComplete={() => setSetupRequired(false)} /> : <Navigate to="/login" />} />
         <Route path="/login" element={setupRequired ? <Navigate to="/setup" /> : <Login />} />
@@ -144,6 +149,7 @@ export function App() {
         } />
       </Routes>
     </Router>
+    </>
   );
 }
 export default App;

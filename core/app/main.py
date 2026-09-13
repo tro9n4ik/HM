@@ -11,12 +11,22 @@ import os
 async def lifespan(app: FastAPI):
     from app.services.plugin_manager import plugin_manager
     from app.models.plugin import Plugin
+    from app.models.system import ActivityLog
 
     db = SessionLocal()
     try:
         plugins = db.query(Plugin).filter(Plugin.autostart == True).all()
         for p in plugins:
-            plugin_manager.start_plugin(p, db)
+            try:
+                plugin_manager.start_plugin(p, db)
+            except Exception as e:
+                p.status = "failed"
+                p.last_error = f"Autostart crashed: {e}"
+                db.add(ActivityLog(
+                    source="plugin_manager",
+                    message=f"Autostart failed for plugin '{p.name}': {e}"
+                ))
+                db.commit()
     finally:
         db.close()
 
