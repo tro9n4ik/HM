@@ -35,8 +35,16 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
         tmp.write(file.file.read())
         tmp_path = tmp.name
 
+    from app.models.system import ActivityLog
+    import zipfile
+
     try:
-        extract_path = plugin_manager.unpack_plugin(tmp_path, plugin_name)
+        try:
+            extract_path = plugin_manager.unpack_plugin(tmp_path, plugin_name)
+        except (ValueError, zipfile.BadZipFile) as e:
+            db.add(ActivityLog(source="plugin_manager", message=f"Install rejected for '{plugin_name}': {e}"))
+            db.commit()
+            raise HTTPException(status_code=400, detail=f"Invalid plugin package: {e}")
 
         manifest_path = os.path.join(extract_path, "manifest.json")
         version = "1.0.0"
@@ -55,14 +63,6 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
                 raise HTTPException(status_code=400, detail="manifest.json is invalid JSON")
         else:
             raise HTTPException(status_code=400, detail="manifest.json is missing from package")
-
-        # Setup environment before finalizing installation
-        setting = db.query(SystemSetting).filter_by(key="pip_index_url").first()
-        pip_mirror = setting.value if setting else None
-
-        success = plugin_manager.setup_environment(extract_path, pip_index_url=pip_mirror)
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to setup virtual environment for plugin")
 
         plugin = db.query(Plugin).filter(Plugin.name == plugin_name).first()
         if not plugin:

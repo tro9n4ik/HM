@@ -2,9 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { Search, RotateCcw, MoreHorizontal, Play, Square, Trash2 } from 'lucide-react';
+import PluginInstallCard from '../components/PluginInstallCard';
 
 export function Dashboard() {
   const [plugins, setPlugins] = useState<any[]>([]);
+  const [install, setInstall] = useState<{fileName: string, state: 'idle' | 'uploading' | 'installing' | 'done' | 'error', error?: string} | null>(null);
   const [systemStats, setSystemStats] = useState<any>({
     cpu: { load: '--', percent: 0 },
     memory: { total: '--', used: '--', percent: 0 },
@@ -186,16 +188,23 @@ export function Dashboard() {
               <input type="file" className="hidden" accept=".hm" onChange={async (e) => {
                 if (e.target.files && e.target.files[0]) {
                   const file = e.target.files[0];
+                  setInstall({ fileName: file.name, state: 'uploading' });
+
                   const formData = new FormData();
                   formData.append('file', file);
 
                   try {
+                    setInstall({ fileName: file.name, state: 'installing' });
                     await axios.post('/api/plugins/install', formData);
+                    setInstall({ fileName: file.name, state: 'done' });
+
                     const res = await axios.get('/api/plugins');
                     setPlugins(res.data);
-                    alert("Плагин успешно установлен");
+
+                    setTimeout(() => setInstall(null), 3000);
                   } catch (err: any) {
-                    alert("Ошибка установки: " + (err.response?.data?.detail || err.message));
+                    setInstall({ fileName: file.name, state: 'error', error: err.response?.data?.detail || 'Не удалось установить' });
+                    setTimeout(() => setInstall(null), 5000);
                   }
                   e.target.value = ''; // Reset input
                 }
@@ -313,6 +322,7 @@ export function Dashboard() {
         </div>
       </div>
 
+      {install && <PluginInstallCard fileName={install.fileName} state={install.state} error={install.error} />}
     </div>
   );
 }
