@@ -15,6 +15,16 @@ async def lifespan(app: FastAPI):
 
     db = SessionLocal()
     try:
+        stale = db.query(Plugin).filter(Plugin.status.in_(["running", "starting"])).all()
+        for p in stale:
+            db.add(ActivityLog(
+                source="plugin_manager",
+                message=f"Plugin '{p.name}' was left in status '{p.status}' after an unclean core shutdown "
+                        f"(core likely crashed or was killed without graceful stop)"
+            ))
+        if stale:
+            db.commit()
+
         plugins = db.query(Plugin).filter(Plugin.autostart == True).all()
         for p in plugins:
             try:

@@ -70,6 +70,18 @@ class PluginManager:
         except subprocess.CalledProcessError as e:
             return False
 
+    def _get_configured_port_range(self, db) -> tuple[int, int]:
+        from app.models.system import SystemSetting
+        port_range_setting = db.query(SystemSetting).filter_by(key="plugin_port_range").first()
+        start, end = 8100, 8200
+        if port_range_setting and port_range_setting.value:
+            try:
+                start_str, end_str = port_range_setting.value.split("-")
+                start, end = int(start_str), int(end_str)
+            except Exception:
+                pass
+        return start, end
+
     def _get_free_port(self, db, start=8100, end=8200) -> int:
         from app.models.plugin import Plugin
         used_ports = [p.port for p in db.query(Plugin).all() if p.port is not None]
@@ -87,17 +99,16 @@ class PluginManager:
     def start_plugin(self, plugin, db) -> bool:
         import subprocess
         import os
-        from app.models.system import SystemSetting, ActivityLog
+        import time
+        import socket
+        from app.models.system import ActivityLog
+
+        def is_port_in_use(port):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                return s.connect_ex(('127.0.0.1', port)) == 0
 
         if plugin.port is None:
-            port_range_setting = db.query(SystemSetting).filter_by(key="plugin_port_range").first()
-            start, end = 8100, 8200
-            if port_range_setting and port_range_setting.value:
-                try:
-                    start_str, end_str = port_range_setting.value.split("-")
-                    start, end = int(start_str), int(end_str)
-                except:
-                    pass
+            start, end = self._get_configured_port_range(db)
             try:
                 plugin.port = self._get_free_port(db, start, end)
                 db.commit()
@@ -106,6 +117,31 @@ class PluginManager:
                 plugin.last_error = str(e)
                 db.commit()
                 return False
+        else:
+            if is_port_in_use(plugin.port):
+                freed = False
+                for _ in range(10):
+                    time.sleep(0.5)
+                    if not is_port_in_use(plugin.port):
+                        freed = True
+                        break
+
+                if not freed:
+                    db.add(ActivityLog(
+                        source="plugin_manager",
+                        message=f"Plugin '{plugin.name}' port {plugin.port} was occupied on startup "
+                                f"(likely an orphaned process from a previous core restart) — reassigning a new port"
+                    ))
+
+                    start, end = self._get_configured_port_range(db)
+                    try:
+                        plugin.port = self._get_free_port(db, start, end)
+                        db.commit()
+                    except Exception as e:
+                        plugin.status = "failed"
+                        plugin.last_error = str(e)
+                        db.commit()
+                        return False
 
         plugin_path = Path(plugin.path).resolve()
         venv_path = plugin_path / "venv"
@@ -148,15 +184,35 @@ class PluginManager:
 
     def stop_plugin(self, plugin, db):
         import psutil
+        import time
         from app.models.system import ActivityLog
 
         proc = self.running_processes.get(plugin.id)
         if proc:
             try:
                 parent = psutil.Process(proc.pid)
-                for child in parent.children(recursive=True):
-                    child.kill()
-                parent.kill()
+                children = parent.children(recursive=True)
+
+                # Graceful termination first
+                try:
+                    parent.terminate()
+                except psutil.NoSuchProcess:
+                    pass
+                for child in children:
+                    try:
+                        child.terminate()
+                    except psutil.NoSuchProcess:
+                        pass
+
+                # Wait up to 5 seconds
+                gone, alive = psutil.wait_procs(children + [parent], timeout=5.0)
+
+                # Force kill if still alive
+                for p in alive:
+                    try:
+                        p.kill()
+                    except psutil.NoSuchProcess:
+                        pass
             except psutil.NoSuchProcess:
                 pass
             del self.running_processes[plugin.id]
