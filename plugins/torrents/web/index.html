@@ -323,6 +323,22 @@
             setTimeout(() => loadReleases(title, year), 500);
         };
 
+
+        const torrentAction = async (hash, action) => {
+            try {
+                const res = await fetch(`${basePath}/api/action`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ hash, action })
+                });
+                if (res.ok) {
+                    loadQbitInfo(); // refresh immediately
+                }
+            } catch(e) {
+                console.error("Action failed", e);
+            }
+        };
+
         const loadQbitInfo = async () => {
             try {
                 const res = await fetch(`${basePath}/api/downloads`);
@@ -337,13 +353,20 @@
                         data.downloading.forEach(t => {
                             const pct = (t.progress * 100).toFixed(1);
                             dlContainer.innerHTML += `
-                                <div class="bg-gray-50 p-3 rounded border border-gray-100">
-                                    <div class="text-sm font-medium text-gray-800 truncate mb-2" title="${t.name}">${t.name}</div>
-                                    <div class="flex justify-between text-xs text-gray-500 mb-1">
-                                        <span>${formatBytes(t.dlspeed)}/s</span>
-                                        <span>${pct}%</span>
+                                <div class="bg-white p-3 rounded border border-gray-200 shadow-sm flex flex-col gap-2">
+                                    <div class="flex justify-between items-start">
+                                        <div class="text-sm font-medium text-gray-800 truncate flex-1" title="${t.name}">${t.name}</div>
+                                        <div class="flex gap-2 ml-2">
+                                            <button onclick="torrentAction('${t.hash}', 'pause')" class="text-gray-400 hover:text-gray-600" title="Пауза">⏸</button>
+                                            <button onclick="torrentAction('${t.hash}', 'resume')" class="text-gray-400 hover:text-emerald-600" title="Возобновить">▶️</button>
+                                            <button onclick="torrentAction('${t.hash}', 'delete')" class="text-gray-400 hover:text-red-600" title="Удалить">🗑</button>
+                                        </div>
                                     </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div class="flex justify-between text-xs text-gray-500">
+                                        <span>${formatBytes(t.dlspeed)}/s ↓</span>
+                                        <span>${formatBytes(t.size)} • ${pct}%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-1.5 mt-1 relative">
                                         <div class="bg-purple-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
                                     </div>
                                 </div>

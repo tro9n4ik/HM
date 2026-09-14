@@ -52,6 +52,7 @@
         <!-- Tabs Navigation -->
         <div class="flex border-b border-gray-200 mb-6">
             <button id="tab-groups" onclick="switchTab('groups')" class="px-4 py-2 border-b-2 font-medium text-sm text-blue-600 border-blue-600">Рабочий экран</button>
+            <button id="tab-menu" onclick="switchTab('menu')" class="px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">Инлайн меню</button>
             <button id="tab-settings" onclick="switchTab('settings')" class="px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">Настройки</button>
         </div>
 
@@ -117,6 +118,23 @@
         </div>
 
 
+        <!-- Menu Builder Tab -->
+        <div id="content-menu" class="hidden space-y-6">
+            <div class="card p-6 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Конструктор инлайн-меню (Бот)</h2>
+                    <button onclick="addRow()" class="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">Добавить строку</button>
+                </div>
+                <div class="text-sm text-gray-500 mb-6">Сконструируйте клавиатуру, которая будет отображаться в боте при вызове Home Assistant.</div>
+
+                <div id="menu-builder" class="space-y-4 mb-6 p-4 bg-gray-50 rounded border border-gray-200 min-h-[100px]">
+                    <!-- Rows injected here -->
+                </div>
+
+                <button onclick="saveMenu()" class="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-medium hover:bg-emerald-700">Сохранить меню</button>
+            </div>
+        </div>
+
         <!-- Settings Tab -->
         <div id="content-settings" class="hidden">
             <div class="card p-8 shadow-sm">
@@ -165,15 +183,21 @@
 
         const switchTab = (tab) => {
             document.getElementById('content-groups').classList.add('hidden');
+            document.getElementById('content-menu').classList.add('hidden');
             document.getElementById('content-settings').classList.add('hidden');
 
             document.getElementById('tab-groups').className = 'px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300';
+            document.getElementById('tab-menu').className = 'px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300';
             document.getElementById('tab-settings').className = 'px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300';
 
             if (tab === 'groups') {
                 document.getElementById('content-groups').classList.remove('hidden');
                 document.getElementById('tab-groups').className = 'px-4 py-2 border-b-2 font-medium text-sm text-blue-600 border-blue-600';
                 loadConfigForGroups();
+            } else if (tab === 'menu') {
+                document.getElementById('content-menu').classList.remove('hidden');
+                document.getElementById('tab-menu').className = 'px-4 py-2 border-b-2 font-medium text-sm text-blue-600 border-blue-600';
+                loadMenuConfig();
             } else {
                 document.getElementById('content-settings').classList.remove('hidden');
                 document.getElementById('tab-settings').className = 'px-4 py-2 border-b-2 font-medium text-sm text-blue-600 border-blue-600';
@@ -459,6 +483,120 @@
                 }
             } catch (err) {
                 alert(err.message);
+            }
+        };
+
+
+        let menuConfig = [];
+
+        const loadMenuConfig = async () => {
+            if (!state.plugin_id) return;
+            try {
+                const res = await fetch(`/api/plugins/${state.plugin_id}/config`);
+                state.config = await res.json();
+
+                try {
+                    menuConfig = typeof state.config.bot_inline_menu === 'string'
+                        ? JSON.parse(state.config.bot_inline_menu)
+                        : (state.config.bot_inline_menu || []);
+                } catch(e) {
+                    menuConfig = [];
+                }
+                renderMenuBuilder();
+            } catch (e) {
+                console.error("Failed to load menu config", e);
+            }
+        };
+
+        const renderMenuBuilder = () => {
+            const container = document.getElementById('menu-builder');
+            container.innerHTML = '';
+
+            if (menuConfig.length === 0) {
+                container.innerHTML = '<div class="text-gray-400 text-sm text-center italic">Пусто. Меню будет строиться по умолчанию. Нажмите "Добавить строку", чтобы создать кастомное меню.</div>';
+                return;
+            }
+
+            menuConfig.forEach((row, rowIndex) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'flex items-center gap-2 p-2 bg-white border border-gray-200 rounded shadow-sm';
+
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'flex-1 flex gap-2 flex-wrap';
+
+                row.forEach((btn, btnIndex) => {
+                    const btnDiv = document.createElement('div');
+                    btnDiv.className = 'flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded text-sm';
+                    btnDiv.innerHTML = `
+                        <span class="truncate max-w-[120px]" title="${btn.entity_id || ''}">${btn.text}</span>
+                        <button onclick="removeButton(${rowIndex}, ${btnIndex})" class="text-red-500 hover:text-red-700 ml-1 text-lg leading-none">&times;</button>
+                    `;
+                    buttonsContainer.appendChild(btnDiv);
+                });
+
+                const addBtn = document.createElement('button');
+                addBtn.onclick = () => showAddButtonModal(rowIndex);
+                addBtn.className = 'text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-dashed border-gray-300 rounded';
+                addBtn.innerText = '+ Кнопка';
+                buttonsContainer.appendChild(addBtn);
+
+                const delRowBtn = document.createElement('button');
+                delRowBtn.onclick = () => removeRow(rowIndex);
+                delRowBtn.className = 'text-red-500 hover:text-red-700 px-2 text-xl leading-none';
+                delRowBtn.innerHTML = '&times;';
+
+                rowDiv.appendChild(buttonsContainer);
+                rowDiv.appendChild(delRowBtn);
+                container.appendChild(rowDiv);
+            });
+        };
+
+        const addRow = () => {
+            menuConfig.push([]);
+            renderMenuBuilder();
+        };
+
+        const removeRow = (index) => {
+            menuConfig.splice(index, 1);
+            renderMenuBuilder();
+        };
+
+        const removeButton = (rowIndex, btnIndex) => {
+            menuConfig[rowIndex].splice(btnIndex, 1);
+            renderMenuBuilder();
+        };
+
+        const showAddButtonModal = (rowIndex) => {
+            // Provide a quick prompt for now to assign an entity
+            // In a fuller implementation, this would be a proper modal with a dropdown of state.entities
+            const text = prompt("Текст кнопки (например: Люстра):");
+            if (!text) return;
+
+            if (text.length > 64) {
+               alert("Текст слишком длинный!");
+               return;
+            }
+
+            const entityId = prompt("Entity ID (необязательно, например light.living_room):");
+            menuConfig[rowIndex].push({ text, entity_id: entityId || null });
+            renderMenuBuilder();
+        };
+
+        const saveMenu = async () => {
+            try {
+                const configData = { ...state.config, bot_inline_menu: JSON.stringify(menuConfig) };
+                const res = await fetch(`/api/plugins/${state.plugin_id}/config`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ config: configData })
+                });
+                if (res.ok) {
+                    showMessage('success-banner', 'Меню сохранено');
+                } else {
+                    showMessage('error-banner', 'Ошибка сохранения');
+                }
+            } catch (err) {
+                showMessage('error-banner', err.message);
             }
         };
 

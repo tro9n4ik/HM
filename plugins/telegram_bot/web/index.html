@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f9fafb; font-family: sans-serif; }
+        .card { background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
+    </style>
+</head>
+<body class="p-6 text-gray-900">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <span class="bg-sky-500 text-white p-1 rounded text-sm">TG</span>
+                Telegram Бот Кузя
+            </h1>
+            <div id="status-badge" class="px-3 py-1 rounded text-sm font-medium bg-gray-200 text-gray-700">
+                Загрузка...
+            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="flex border-b border-gray-200 mb-6">
+            <button id="tab-dashboard" onclick="switchTab('dashboard')" class="px-4 py-2 border-b-2 font-medium text-sm text-sky-500 border-sky-500">Основная</button>
+            <button id="tab-settings" onclick="switchTab('settings')" class="px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">Настройки</button>
+        </div>
+
+        <div id="error-banner" class="hidden mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded"></div>
+        <div id="success-banner" class="hidden mb-6 bg-emerald-50 border border-emerald-200 text-emerald-600 px-4 py-3 rounded"></div>
+
+        <!-- Dashboard Tab -->
+        <div id="content-dashboard" class="space-y-6">
+            <div class="card p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Статус бота</h2>
+                <div class="text-gray-600 text-sm">
+                    Telegram Бот "Кузя" запущен и ожидает сообщений. Перейдите в настройки для конфигурации токена.
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="content-settings" class="hidden">
+            <div class="card p-8 shadow-sm">
+                <h2 class="text-xl font-bold mb-6 text-gray-800">Настройки интеграции</h2>
+                <form id="settingsForm" onsubmit="saveSettings(event)" class="max-w-2xl">
+                    <div class="mb-4">
+                        <label class="block mb-1 text-sm font-medium text-gray-700">Telegram Bot Token</label>
+                        <input type="password" id="bot_token" class="w-full rounded border-gray-300 shadow-sm p-2 border focus:border-sky-500 focus:ring focus:ring-sky-200" placeholder="***">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block mb-1 text-sm font-medium text-gray-700">Allowed Users (JSON Array)</label>
+                        <input type="text" id="allowed_users" class="w-full rounded border-gray-300 shadow-sm p-2 border focus:border-sky-500 focus:ring focus:ring-sky-200 font-mono" placeholder="[123456789]">
+                    </div>
+                    <button type="submit" class="bg-sky-500 text-white px-4 py-2 rounded font-medium hover:bg-sky-600 transition-colors">Сохранить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const basePath = window.location.pathname.replace('/index.html', '').replace(/\/$/, '');
+        const state = { plugin_id: null, config: {} };
+
+        const showMessage = (id, msg) => {
+            const el = document.getElementById(id);
+            el.innerText = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        };
+
+        const switchTab = (tab) => {
+            document.getElementById('content-dashboard').classList.add('hidden');
+            document.getElementById('content-settings').classList.add('hidden');
+
+            document.getElementById('tab-dashboard').className = 'px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300';
+            document.getElementById('tab-settings').className = 'px-4 py-2 border-b-2 font-medium text-sm text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300';
+
+            if (tab === 'dashboard') {
+                document.getElementById('content-dashboard').classList.remove('hidden');
+                document.getElementById('tab-dashboard').className = 'px-4 py-2 border-b-2 font-medium text-sm text-sky-500 border-sky-500';
+            } else {
+                document.getElementById('content-settings').classList.remove('hidden');
+                document.getElementById('tab-settings').className = 'px-4 py-2 border-b-2 font-medium text-sm text-sky-500 border-sky-500';
+                loadSettings();
+            }
+        };
+
+        const loadSettings = async () => {
+            if (!state.plugin_id) return;
+            try {
+                const res = await fetch(`/api/plugins/${state.plugin_id}/config`);
+                state.config = await res.json();
+
+                document.getElementById('bot_token').value = state.config.BOT_TOKEN === '***' ? '' : (state.config.BOT_TOKEN || '');
+                document.getElementById('allowed_users').value = state.config.ALLOWED_USERS || '[]';
+            } catch (e) {
+                console.error("Failed to load config", e);
+            }
+        };
+
+        const saveSettings = async (e) => {
+            e.preventDefault();
+            const configData = {
+                ...state.config,
+                ALLOWED_USERS: document.getElementById('allowed_users').value
+            };
+
+            const token = document.getElementById('bot_token').value;
+            if (token) configData.BOT_TOKEN = token;
+
+            try {
+                const res = await fetch(`/api/plugins/${state.plugin_id}/config`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ config: configData })
+                });
+                if (res.ok) {
+                    showMessage('success-banner', 'Настройки сохранены');
+                    document.getElementById('bot_token').value = '';
+                } else {
+                    showMessage('error-banner', 'Ошибка сохранения');
+                }
+            } catch (err) {
+                showMessage('error-banner', err.message);
+            }
+        };
+
+        const init = async () => {
+            const res = await fetch(`${basePath}/meta`);
+            const meta = await res.json();
+            state.plugin_id = meta.plugin_id;
+
+            // Fetch status
+            try {
+                const sRes = await fetch(`${basePath}/status`);
+                const status = await sRes.json();
+                const badge = document.getElementById('status-badge');
+                if (status.ready) {
+                    badge.className = 'px-3 py-1 rounded text-sm font-medium bg-emerald-100 text-emerald-700 border border-emerald-200';
+                    badge.innerText = 'Подключено';
+                } else {
+                    badge.className = 'px-3 py-1 rounded text-sm font-medium bg-red-100 text-red-700 border border-red-200';
+                    badge.innerText = 'Ошибка';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        init();
+    </script>
+</body>
+</html>

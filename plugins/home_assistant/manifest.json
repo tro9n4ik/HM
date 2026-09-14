@@ -39,6 +39,12 @@
     "tg_groups": {
       "type": "json",
       "default": "{}"
+    },
+    "bot_inline_menu": {
+      "type": "json",
+      "title": "Инлайн меню Telegram",
+      "description": "Настройка графического меню",
+      "default": "[]"
     }
   },
   "web_ui": true,

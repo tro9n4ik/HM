@@ -1,6 +1,8 @@
 {
   "name": "telegram_bot",
   "version": "1.0.0",
+  "description": "Telegram Bot Hub for Home.Media",
+  "web_ui": true,
   "config_schema": {
     "BOT_TOKEN": {
       "type": "secret",
