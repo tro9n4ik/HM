@@ -239,6 +239,37 @@ async def web_downloads():
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
+@app.post("/api/action")
+async def torrent_action(req: Request):
+    data = await req.json()
+    action = data.get("action")
+    hashes = data.get("hash")
+
+    if action not in ["pause", "resume", "delete"]:
+        return JSONResponse(status_code=400, content={"detail": "Invalid action"})
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            if not await _qbit_login(client):
+                raise Exception("qBittorrent login failed")
+
+            base_url = app.config.get('qbit_url').rstrip('/')
+
+            if action == "pause":
+                url = f"{base_url}/api/v2/torrents/pause"
+                await client.post(url, data={"hashes": hashes})
+            elif action == "resume":
+                url = f"{base_url}/api/v2/torrents/resume"
+                await client.post(url, data={"hashes": hashes})
+            elif action == "delete":
+                url = f"{base_url}/api/v2/torrents/delete"
+                await client.post(url, data={"hashes": hashes, "deleteFiles": "true"})
+
+            return {"status": "ok"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+
 
 # --- TELEGRAM BOT HUB ---
 async def bot_menu():

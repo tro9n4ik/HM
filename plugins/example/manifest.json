@@ -1,6 +1,8 @@
 {
-  "name": "example_plugin",
+  "name": "example",
   "version": "1.0.0",
+  "description": "Example Plugin for Home.Media",
+  "web_ui": true,
   "config_schema": {
     "API_KEY": {
       "type": "secret",

@@ -174,6 +174,38 @@ def build_tg_groups() -> Dict[str, List[str]]:
     return final_groups
 
 async def get_bot_menu():
+    inline_menu_raw = app.config.get("bot_inline_menu", "[]")
+    try:
+        custom_menu = json.loads(inline_menu_raw) if isinstance(inline_menu_raw, str) else inline_menu_raw
+    except:
+        custom_menu = []
+
+    if custom_menu and isinstance(custom_menu, list) and len(custom_menu) > 0:
+        # Use custom inline menu built via UI
+        buttons = []
+        for row in custom_menu:
+            btn_row = []
+            for btn in row:
+                text = btn.get("text", "...")
+                entity_id = btn.get("entity_id")
+                if entity_id:
+                    short_id = _get_short_hash(entity_id)
+                    ent = _get_entity(short_id)
+                    icon = "⚪"
+                    if ent:
+                        if ent["state"] in ["on", "playing", "open", "unlocked"]: icon = "🟢"
+                        elif ent["state"] in ["off", "paused", "closed", "locked"]: icon = "🔴"
+                    btn_row.append({"text": f"{icon} {text}", "action": f"ha_e_{short_id}"})
+                else:
+                    btn_row.append({"text": text, "action": "ha_none"})
+            buttons.append(btn_row)
+
+        return {
+            "text": "🏠 Home Assistant (Кастомное меню)",
+            "buttons": buttons
+        }
+
+    # Fallback to default group list
     groups = build_tg_groups()
     if not groups:
         return {"text": "Home Assistant\n\nНет устройств", "buttons": [[{"text": "Закрыть", "action": "ha_none"}]]}
