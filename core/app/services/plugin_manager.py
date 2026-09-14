@@ -194,16 +194,25 @@ class PluginManager:
                 children = parent.children(recursive=True)
 
                 # Graceful termination first
+                try:
+                    parent.terminate()
+                except psutil.NoSuchProcess:
+                    pass
                 for child in children:
-                    child.terminate()
-                parent.terminate()
+                    try:
+                        child.terminate()
+                    except psutil.NoSuchProcess:
+                        pass
 
                 # Wait up to 5 seconds
                 gone, alive = psutil.wait_procs(children + [parent], timeout=5.0)
 
                 # Force kill if still alive
                 for p in alive:
-                    p.kill()
+                    try:
+                        p.kill()
+                    except psutil.NoSuchProcess:
+                        pass
             except psutil.NoSuchProcess:
                 pass
             del self.running_processes[plugin.id]
