@@ -179,7 +179,8 @@ def update_config(plugin_id: str, req: ConfigUpdate, db: Session = Depends(get_d
             config_entry.value = str_val
             config_entry.is_secret = is_secret
         else:
-            config_entry = PluginConfig(plugin_id=plugin_id, key=key, value=str_val, is_secret=is_secret)
+            config_entry = PluginConfig(plugin_id=plugin_id, key=key, value=str_val)
+            config_entry.is_secret = is_secret
             db.add(config_entry)
 
     db.commit()
