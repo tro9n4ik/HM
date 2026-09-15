@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Save, Plus, ArrowLeft, LayoutDashboard, Settings } from 'lucide-react';
+import { Save, Plus, ArrowLeft } from 'lucide-react';
 
 export function PluginConfig() {
   const { id } = useParams();
@@ -11,8 +11,7 @@ export function PluginConfig() {
   const [pluginName, setPluginName] = useState<string>('');
   const [msg, setMsg] = useState('');
   const [isError, setIsError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'main' | 'settings'>('main');
-  const [hasWebUi, setHasWebUi] = useState(false);
+    const [hasWebUi, setHasWebUi] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -30,9 +29,6 @@ export function PluginConfig() {
            try {
               const manifest = plugin.manifest ? (typeof plugin.manifest === 'string' ? JSON.parse(plugin.manifest) : plugin.manifest) : {};
               setHasWebUi(manifest.web_ui === true);
-              if (manifest.web_ui !== true) {
-                 setActiveTab('settings');
-              }
            } catch (e) {}
         }
         const pName = plugin?.name || id;
@@ -62,7 +58,18 @@ export function PluginConfig() {
       setIsError(false);
       setTimeout(() => navigate('/'), 1500);
     } catch (err: any) {
-      setMsg(`Ошибка сохранения: ${err.response?.data?.detail || err.message}`);
+      const detail = err.response?.data?.detail;
+      let message: string;
+      if (Array.isArray(detail)) {
+        message = detail.map((e: any) =>
+          typeof e === 'string' ? e : (e.msg || JSON.stringify(e))
+        ).join('; ');
+      } else if (typeof detail === 'string') {
+        message = detail;
+      } else {
+        message = err.message || 'Неизвестная ошибка';
+      }
+      setMsg(`Ошибка сохранения: ${message}`);
       setIsError(true);
     }
   };
@@ -85,29 +92,11 @@ export function PluginConfig() {
         </Link>
       </div>
 
-            {/* Tabs */}
-      {hasWebUi && (
-          <div className="flex gap-4 border-b border-gray-200 mb-6">
-              <button
-                 onClick={() => setActiveTab('main')}
-                 className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${activeTab === 'main' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-              >
-                 <LayoutDashboard className="w-4 h-4" />
-                 Основная
-              </button>
-              <button
-                 onClick={() => setActiveTab('settings')}
-                 className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${activeTab === 'settings' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-              >
-                 <Settings className="w-4 h-4" />
-                 Настройки
-              </button>
-          </div>
-      )}
+
 
       {isLoading ? (
           <div className="flex justify-center p-12"><div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>
-      ) : activeTab === 'main' && hasWebUi ? (
+      ) : hasWebUi ? (
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden h-[800px]">
               <iframe src={`/plugins/${pluginName}/index.html`} className="w-full h-full border-0 bg-gray-50" title="Plugin UI" />
           </div>
