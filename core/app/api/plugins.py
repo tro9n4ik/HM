@@ -146,8 +146,9 @@ def get_config(plugin_id: str, db: Session = Depends(get_db), current_user=Depen
     configs = db.query(PluginConfig).filter(PluginConfig.plugin_id == plugin_id).all()
     return {c.key: ("***" if c.is_secret else c.value) for c in configs}
 
+from typing import Any
 class ConfigUpdate(BaseModel):
-    config: Dict[str, str]
+    config: Dict[str, Any]
 
 @router.put("/{plugin_id}/config")
 def update_config(plugin_id: str, req: ConfigUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -173,10 +174,13 @@ def update_config(plugin_id: str, req: ConfigUpdate, db: Session = Depends(get_d
 
         # basic validation based on type
         if field_def.get("type") == "json":
-             try:
-                 json.loads(value)
-             except Exception:
-                 raise HTTPException(status_code=400, detail=f"Invalid JSON for key {key}")
+             if not isinstance(value, str):
+                  value = json.dumps(value)
+             else:
+                  try:
+                      json.loads(value)
+                  except Exception:
+                      raise HTTPException(status_code=400, detail=[{"loc": ["body", "config", key], "msg": "Invalid JSON string format", "type": "value_error.json"}])
 
 
         # Format booleans explicitly for frontend compatibility
