@@ -7,9 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #f9fafb; font-family: sans-serif; }
-        .dark-mode { background-color: #111827; color: #f9fafb; }
+
         .card { background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
-        .dark-mode .card { background-color: #1f2937; border-color: #374151; }
+
 
         input[type=range] {
             -webkit-appearance: none;
@@ -32,7 +32,7 @@
             background: #d1d5db;
             border-radius: 2px;
         }
-        .dark-mode input[type=range]::-webkit-slider-runnable-track {
+
             background: #4b5563;
         }
     </style>
@@ -110,7 +110,7 @@
             </div>
 
             <!-- Entities Block -->
-            <div class="dark-mode p-6 rounded-lg">
+            <div class="p-6 rounded-lg">
                 <div id="domains-container" class="space-y-8">
                     <!-- Dynamic content injected here -->
                 </div>
@@ -632,7 +632,7 @@
                 const section = document.createElement('div');
 
                 const title = document.createElement('h2');
-                title.className = 'text-lg font-semibold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-700 pb-2';
+                title.className = 'text-lg font-semibold text-gray-600 uppercase tracking-wider mb-4 border-b border-gray-200 pb-2';
                 title.innerText = domain;
                 section.appendChild(title);
 
@@ -652,7 +652,7 @@
                     if (['light', 'switch', 'input_boolean'].includes(domain)) {
                         controlsHtml = `
                             <button onclick="controlEntity('${ent.entity_id}', 'toggle')"
-                                class="px-4 py-2 rounded text-sm font-medium transition-colors ${isOn ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}">
+                                class="px-4 py-2 rounded text-sm font-medium transition-colors ${isOn ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}">
                                 ${isOn ? 'Выключить' : 'Включить'}
                             </button>
                         `;
@@ -670,8 +670,8 @@
                         controlsHtml = `
                             <div class="text-xs text-gray-400 mb-2">Целевая: ${ent.attributes.temperature || '--'}°C</div>
                             <div class="flex gap-2">
-                                <button onclick="controlEntity('${ent.entity_id}', 'set_temperature', {temperature: ${(ent.attributes.temperature || 20) - 0.5}})" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">-</button>
-                                <button onclick="controlEntity('${ent.entity_id}', 'set_temperature', {temperature: ${(ent.attributes.temperature || 20) + 0.5}})" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">+</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'set_temperature', {temperature: ${(ent.attributes.temperature || 20) - 0.5}})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">-</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'set_temperature', {temperature: ${(ent.attributes.temperature || 20) + 0.5}})" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">+</button>
                             </div>
                         `;
                     } else if (domain === 'media_player') {
@@ -681,9 +681,9 @@
                     } else if (domain === 'cover') {
                         controlsHtml = `
                             <div class="flex gap-2">
-                                <button onclick="controlEntity('${ent.entity_id}', 'open_cover')" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">⬆️</button>
-                                <button onclick="controlEntity('${ent.entity_id}', 'stop_cover')" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">⏹️</button>
-                                <button onclick="controlEntity('${ent.entity_id}', 'close_cover')" class="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600">⬇️</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'open_cover')" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">⬆️</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'stop_cover')" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">⏹️</button>
+                                <button onclick="controlEntity('${ent.entity_id}', 'close_cover')" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">⬇️</button>
                             </div>
                         `;
                     } else {
@@ -695,7 +695,7 @@
                         <div>
                             <div class="flex items-center gap-2 mb-1">
                                 ${iconHtml}
-                                <h3 class="font-medium text-gray-100 truncate" title="${name}">${name}</h3>
+                                <h3 class="font-medium text-gray-800 truncate" title="${name}">${name}</h3>
                             </div>
                             <div class="text-xs text-gray-500 font-mono truncate">${ent.entity_id}</div>
                         </div>

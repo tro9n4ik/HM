@@ -79,18 +79,11 @@ if os.path.exists(static_dir) and os.path.exists(assets_dir):
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
     if full_path.startswith("api/"):
-        # Avoid masking true API 404s
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Not found")
-
-    if full_path.startswith("plugins/") and "." in full_path.split("/")[-1]:
-         # allow static files inside proxy route plugins/ to pass through to proxy router,
-         # proxy router catches /plugins/{plugin_id}/{path:path} before this catch-all usually,
-         # but we want to make sure it acts as a normal route.
-         # Wait, proxy.router handles /plugins/... so this block isn't hit for them unless proxy router falls through
-         pass
 
     index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"error": "Frontend not built"}
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail="Фронтенд не собран")

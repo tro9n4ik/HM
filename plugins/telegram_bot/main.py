@@ -65,7 +65,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     catalog = await _fetch_catalog()
     keyboard = []
     for p in catalog:
-        keyboard.append([InlineKeyboardButton(f"{p['icon']} {p['title']}", callback_data=f"route:{p['name']}:/")])
+        keyboard.append([InlineKeyboardButton(f"{p['icon']} {p['title']}", callback_data=f"r:{p['name']}:/")])
 
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
 
@@ -83,7 +83,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     data = query.data
-    if not data.startswith("route:"):
+    if not data.startswith("r:"):
         return
 
     parts = data.split(":", 2)
@@ -168,7 +168,7 @@ async def _apply_bot_response(message_obj, user_id, plugin_name, payload, is_new
     for row in buttons:
         btn_row = []
         for btn in row:
-            btn_row.append(InlineKeyboardButton(btn["text"], callback_data=f"route:{plugin_name}:{btn['action']}"))
+            btn_row.append(InlineKeyboardButton(btn["text"], callback_data=f"r:{plugin_name}:{btn['action']}"))
         keyboard.append(btn_row)
 
     # Always append a Back to Hub button if it's a plugin view
@@ -199,7 +199,7 @@ async def hub_home_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     catalog = await _fetch_catalog()
     keyboard = []
     for p in catalog:
-        keyboard.append([InlineKeyboardButton(f"{p['icon']} {p['title']}", callback_data=f"route:{p['name']}:/")])
+        keyboard.append([InlineKeyboardButton(f"{p['icon']} {p['title']}", callback_data=f"r:{p['name']}:/")])
 
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
 
@@ -222,7 +222,7 @@ async def start_bot():
     ptb_app = Application.builder().token(bot_token).build()
     ptb_app.add_handler(CommandHandler("start", start_command))
     ptb_app.add_handler(CallbackQueryHandler(hub_home_callback, pattern="^hub_home$"))
-    ptb_app.add_handler(CallbackQueryHandler(handle_callback, pattern="^route:"))
+    ptb_app.add_handler(CallbackQueryHandler(handle_callback, pattern="^r:"))
     ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     await ptb_app.initialize()
