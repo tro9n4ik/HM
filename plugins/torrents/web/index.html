@@ -225,40 +225,6 @@
             }
         };
 
-        const saveSettings = async (e) => {
-            e.preventDefault();
-            const configData = {
-                ...state.config,
-                prowlarr_url: document.getElementById('prowlarr_url').value,
-                qbit_url: document.getElementById('qbit_url').value,
-                qbit_username: document.getElementById('qbit_username').value
-            };
-
-            const tmdb = document.getElementById('tmdb_api_key').value;
-            if (tmdb) configData.tmdb_api_key = tmdb;
-            const prowlarr = document.getElementById('prowlarr_api_key').value;
-            if (prowlarr) configData.prowlarr_api_key = prowlarr;
-            const qbit = document.getElementById('qbit_password').value;
-            if (qbit) configData.qbit_password = qbit;
-
-            try {
-                const res = await fetch(`/api/plugins/${state.plugin_id}/config`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ config: configData })
-                });
-                if (res.ok) {
-                    showSuccess('Настройки успешно сохранены');
-                    document.getElementById('tmdb_api_key').value = '';
-                    document.getElementById('prowlarr_api_key').value = '';
-                    document.getElementById('qbit_password').value = '';
-                } else {
-                    showError('Ошибка сохранения настроек');
-                }
-            } catch (err) {
-                showError(err.message);
-            }
-        };
 
         const loadTracking = async () => {
             try {

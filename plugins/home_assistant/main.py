@@ -113,7 +113,8 @@ async def get_status():
 @app.get("/api/entities")
 async def get_entities():
     with state.lock:
-        return state.entities
+        allowed_domains = ("light.", "switch.", "climate.", "sensor.")
+        return [e for e in state.entities if e["entity_id"].startswith(allowed_domains)]
 
 @app.post("/api/refresh")
 async def force_refresh():
@@ -138,6 +139,29 @@ async def control_entity(req: Request):
         return {"status": "ok"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@app.get("/api/menu-layout")
+async def get_menu_layout():
+    layout = app.config.get("bot_inline_menu", "[]")
+    if isinstance(layout, str):
+        try:
+            layout = json.loads(layout)
+        except:
+            layout = []
+    return {"layout": layout}
+
+@app.post("/api/menu-layout")
+async def save_menu_layout(req: Request):
+    data = await req.json()
+    layout = data.get("layout", [])
+    app.config["bot_inline_menu"] = json.dumps(layout)
+    async with httpx.AsyncClient() as client:
+        await client.put(
+            f"{app.core_internal_url}/api/internal/plugins/home_assistant/config",
+            json={"config": app.config},
+            timeout=5.0
+        )
+    return {"status": "ok"}
 
 # --- TELEGRAM BOT HUB INTEGRATION ---
 
@@ -188,6 +212,8 @@ async def get_bot_menu():
             for btn in row:
                 text = btn.get("text", "...")
                 entity_id = btn.get("entity_id")
+                action_type = btn.get("action_type", "status")
+
                 if entity_id:
                     short_id = _get_short_hash(entity_id)
                     ent = _get_entity(short_id)
@@ -195,7 +221,13 @@ async def get_bot_menu():
                     if ent:
                         if ent["state"] in ["on", "playing", "open", "unlocked"]: icon = "🟢"
                         elif ent["state"] in ["off", "paused", "closed", "locked"]: icon = "🔴"
-                    btn_row.append({"text": f"{icon} {text}", "action": f"ha_e_{short_id}"})
+
+                    if action_type == "toggle":
+                        btn_row.append({"text": f"{icon} {text}", "action": f"ha_c_{short_id}_toggle"})
+                    elif action_type == "press":
+                        btn_row.append({"text": f"{icon} {text}", "action": f"ha_c_{short_id}_press"})
+                    else: # default status
+                        btn_row.append({"text": f"{icon} {text}", "action": f"ha_e_{short_id}"})
                 else:
                     btn_row.append({"text": text, "action": "ha_none"})
             buttons.append(btn_row)
