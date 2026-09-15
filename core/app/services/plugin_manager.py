@@ -12,7 +12,9 @@ class PluginManager:
         self.running_processes = {}
 
     def unpack_plugin(self, zip_path: str, plugin_name: str) -> str:
+        from app.services.plugin_validator import PluginValidationError
         plugin_path = self.plugins_dir / plugin_name
+        plugin_path_resolved = plugin_path.resolve()
 
         import shutil
         if plugin_path.exists():
@@ -20,19 +22,32 @@ class PluginManager:
 
         plugin_path.mkdir(parents=True, exist_ok=True)
 
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            # Zip-Slip protection
-            for member in zip_ref.infolist():
-                # zip_ref.extract safely normalizes paths in modern python, but
-                # verifying the absolute path doesn't escape plugin_path is safer
-                member_path = Path(member.filename)
-                if member_path.is_absolute() or ".." in member_path.parts:
-                    raise ValueError(f"Zip-slip attempt detected: {member.filename}")
+        MAX_FILES = 2000
+        MAX_UNCOMPRESSED_SIZE = 500 * 1024 * 1024  # 500 MB
 
-                # Check resolved path
-                extracted_path = (plugin_path / member.filename).resolve()
-                if not str(extracted_path).startswith(str(plugin_path.resolve())):
-                    raise ValueError(f"Zip-slip attempt detected: {member.filename}")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            infos = zip_ref.infolist()
+
+            # Zip Bomb protection
+            if len(infos) > MAX_FILES:
+                raise PluginValidationError("Plugin archive contains too many files.")
+
+            total_size = sum(info.file_size for info in infos)
+            if total_size > MAX_UNCOMPRESSED_SIZE:
+                raise PluginValidationError("Plugin archive uncompressed size is too large.")
+
+            # Zip-Slip protection
+            for member in infos:
+                member_path = Path(member.filename)
+
+                # Block explicitly dangerous patterns
+                if member_path.is_absolute() or ".." in member_path.parts:
+                    raise PluginValidationError(f"Unsafe archive path: {member.filename}")
+
+                # Strict resolution check
+                target = (plugin_path_resolved / member_path).resolve()
+                if not target.is_relative_to(plugin_path_resolved):
+                    raise PluginValidationError(f"Zip-slip attempt detected: {member.filename}")
 
                 zip_ref.extract(member, plugin_path)
 
