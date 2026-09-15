@@ -23,7 +23,7 @@ def list_plugins(db: Session = Depends(get_db), current_user=Depends(get_current
     return db.query(Plugin).all()
 
 @router.post("/install")
-def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+async def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     if not file.filename.endswith(".hm"):
         raise HTTPException(status_code=400, detail="Only .hm files are supported")
 
@@ -31,8 +31,16 @@ def install_plugin(file: UploadFile = File(...), db: Session = Depends(get_db), 
     safe_filename = file.filename.replace("\\", "/")
     plugin_name = os.path.basename(safe_filename)[:-3]
 
+    MAX_PLUGIN_SIZE = 100 * 1024 * 1024  # 100 MB
+    size = 0
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".hm") as tmp:
-        tmp.write(file.file.read())
+        while chunk := await file.read(1024 * 1024):
+            size += len(chunk)
+            if size > MAX_PLUGIN_SIZE:
+                os.remove(tmp.name)
+                raise HTTPException(status_code=413, detail="Plugin package is too large (max 100MB)")
+            tmp.write(chunk)
         tmp_path = tmp.name
 
     from app.models.system import ActivityLog
