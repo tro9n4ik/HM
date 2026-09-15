@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, RotateCcw, MoreHorizontal, Play, Square, Trash2 } from 'lucide-react';
 import PluginInstallCard from '../components/PluginInstallCard';
 
@@ -20,6 +20,9 @@ export function Dashboard() {
 
   // Ref for handling click outside
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, pluginName: string, pluginId: string} | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPlugins = async () => {
@@ -107,7 +110,7 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex items-center text-sm text-gray-500 mb-6">
         <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></div>
-        <span>Local Production <span className="text-gray-300 mx-2">/</span></span>
+        <span>{window.location.hostname} <span className="text-gray-300 mx-2">/</span></span>
       </div>
 
       {/* Top Stats Cards */}
@@ -235,7 +238,19 @@ export function Dashboard() {
                 <td className="px-6 py-4 text-gray-600">{p.status}</td>
                 <td className="px-6 py-4 text-right flex items-center justify-end gap-3 relative">
                   <Link to={`/plugins/${p.id}/logs`} className="text-gray-400 hover:text-gray-600">Логи</Link>
-                  <Link to={`/plugins/${p.id}/config`} className="text-gray-400 hover:text-gray-600">Настройки</Link>
+                  <Link
+                    to={`/plugins/${p.id}/config`}
+                    onClick={(e) => {
+                      const isConfigured = p.is_configured === true || p.is_configured === undefined;
+                      if (!isConfigured) {
+                        e.preventDefault();
+                        setModalConfig({ isOpen: true, pluginName: p.name, pluginId: p.id });
+                      }
+                    }}
+                    className="text-emerald-600 hover:text-emerald-700 font-medium"
+                  >
+                    Интерфейс
+                  </Link>
                   <button onClick={() => axios.post(`/api/plugins/${p.id}/restart`)} className="text-gray-400 hover:text-gray-600">
                     <RotateCcw className="w-4 h-4" />
                   </button>
@@ -323,6 +338,19 @@ export function Dashboard() {
       </div>
 
       {install && <PluginInstallCard fileName={install.fileName} state={install.state} error={install.error} />}
+
+      {modalConfig?.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Настройка необходима</h3>
+            <p className="text-gray-600 mb-6 text-sm">Плагин {modalConfig.pluginName} еще не настроен. Для начала работы необходимо заполнить параметры подключения.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setModalConfig(null)} className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium text-sm">Отмена</button>
+              <button onClick={() => navigate(`/plugins/${modalConfig.pluginId}/config`)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-sm">Перейти к настройкам</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
