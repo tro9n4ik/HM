@@ -45,14 +45,6 @@ const Sidebar = () => {
       </div>
 
       <div className="p-4">
-        <div className="flex items-center justify-between border border-gray-200 rounded-md px-3 py-1.5 text-sm mb-6 bg-gray-50 cursor-pointer">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span>prod-cluster-01</span>
-          </div>
-          <span className="text-gray-400 text-xs">↕</span>
-        </div>
-
         <ul className="space-y-1">
           {menuItems.map((item) => {
             const isActive = path === item.path || (item.path !== '/' && path.startsWith(item.path));
