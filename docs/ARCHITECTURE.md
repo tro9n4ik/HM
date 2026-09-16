@@ -1,44 +1,31 @@
-# Home.Media Architecture Inventory (Pre-Refactoring Phase 1)
+# Архитектура Home.Media
 
-## Core Components
+## Основные компоненты (Core)
 - **FastAPI Core (`core/app/main.py`)**:
-  - Central orchestrator, API server, HTTP/WebSocket reverse-proxy (`core/app/api/proxy.py`).
-  - Contains routes for Auth, System settings, Plugins management, and Internal SDK callbacks.
-  - Serves compiled React Admin UI.
-  - Lifecycle: Reads autostart plugins from DB and launches them using `PluginManager`. Runs an asynchronous healthcheck loop in the background.
+  - Центральный оркестратор, API-сервер, обратный прокси для HTTP/WebSocket (`core/app/api/proxy.py`).
+  - Содержит роуты для аутентификации, системных настроек, управления плагинами и внутренних SDK-колбэков.
+  - Раздает скомпилированный фронтенд React (Admin UI).
+  - Жизненный цикл: Читает автозапуск плагинов из базы данных и запускает их через `PluginManager`. Асинхронно проверяет их здоровье.
 
-- **Plugin Manager (`core/app/services/plugin_manager.py`)**:
-  - Handles the `.hm` zip extraction (with basic zip-slip check).
-  - Bootstraps virtual environments (`venv`) and installs `requirements.txt`.
-  - Dynamically assigns ports (`_get_free_port()`).
-  - Manages processes (`subprocess.Popen` and `psutil`).
-  - Stores running processes in an in-memory dictionary `self.running_processes`.
+- **Менеджер плагинов (`core/app/services/plugin_manager.py`)**:
+  - Обрабатывает распаковку `.hm` zip-архивов (с защитой от zip-slip).
+  - Подготавливает виртуальные окружения (`venv`) и устанавливает `requirements.txt`.
+  - Динамически назначает свободные порты (`_get_free_port()`).
+  - Управляет процессами (`subprocess.Popen` и `psutil`).
+  - Хранит запущенные процессы в памяти (`self.running_processes`).
 
-- **Database (`core/app/database.py`, `core/app/models/`)**:
-  - SQLAlchemy ORM with SQLite (development) or PostgreSQL (production) support.
-  - Models: `User` (Auth), `Plugin` (State and metadata), `PluginConfig` (Plugin-specific key-values including secrets), `SystemSetting` (Global settings), `ActivityLog` (Audit trail).
-  - Migrations managed by Alembic.
+- **База данных (`core/app/database.py`, `core/app/models/`)**:
+  - SQLAlchemy ORM с поддержкой SQLite (для разработки) или PostgreSQL (для продакшена).
+  - Модели: `User` (Аутентификация), `Plugin` (Состояние и метаданные), `PluginConfig` (Настройки плагинов, включая секреты), `SystemSetting` (Глобальные настройки), `ActivityLog` (Журнал аудита).
+  - Миграции управляются через Alembic.
 
-- **Admin UI (`admin/src/`)**:
-  - React (Vite) Single Page Application styled with Tailwind CSS.
-  - Handles initial setup, login, dashboard (plugin list & stats), system settings, plugin configuration, logs, and embedded plugin web interfaces via IFrame.
+- **Админка (UI) (`admin/src/`)**:
+  - React (Vite) Single Page Application, стилизовано с помощью Tailwind CSS.
+  - Обрабатывает первоначальную настройку, логин, дашборд (список плагинов и статистика), системные настройки, конфигурирование плагинов, просмотр логов и встроенные интерфейсы плагинов (через IFrame).
 
-- **Plugins (`plugins/`)**:
-  - Encapsulated `.hm` files containing Python source, `manifest.json`, `requirements.txt`, and optionally a React frontend (`web/`).
-  - **SDK (`plugin_sdk.py`)**: Embedded into plugins at runtime; wraps FastAPI to provide auto-registration, config fetching from Core, and routing.
-  - **Telegram Bot**: Acts as a hub, dynamically querying other plugins for inline menus via `/api/internal/plugins`.
-  - **Torrents**: qBittorrent wrapper with polling and remote control via its own `web/index.html`.
-  - **Home Assistant**: Connects to HA API, syncs entities, provides UI for custom Telegram groups and inline menus.
-
-## Infrastructure & Lifecycle Flows
-- **Docker (`Dockerfile`, `docker-entrypoint.sh`)**:
-  - Two-stage build: compiles frontend first, then builds the Python container.
-  - Generates `SECRET_KEY` on first boot if missing, runs Alembic migrations, starts Uvicorn.
-- **Authentication (`core/app/api/auth.py`)**:
-  - JWT tokens stored in HttpOnly cookies. BCrypt password hashing.
-  - Initial setup creates the first admin user.
-- **Plugin Installation (`core/app/api/plugins.py`)**:
-  - Direct, synchronous blocking endpoint.
-  - Extracts zip -> Parses manifest -> Installs dependencies -> Registers to DB -> Starts candidate -> Validates health.
-- **Plugin Proxies (`core/app/api/proxy.py`)**:
-  - Both standard HTTP and WebSocket proxying supported, validating user cookies before forwarding to the internal plugin port.
+- **Плагины (`plugins/`)**:
+  - Инкапсулированные `.hm` архивы, содержащие исходный код на Python, `manifest.json`, `requirements.txt` и (опционально) фронтенд (`web/`).
+  - **SDK (`plugin_sdk.py`)**: Встраивается в плагины во время выполнения; обертка над FastAPI для авторегистрации, получения конфигурации из Ядра и роутинга.
+  - **Telegram Bot**: Выступает в роли хаба, динамически запрашивая меню других плагинов через `/api/internal/plugins`.
+  - **Torrents**: Интеграция с qBittorrent, Prowlarr и TMDb со своим веб-интерфейсом.
+  - **Home Assistant**: Интеграция с умным домом, собственный конструктор инлайн-меню бота.

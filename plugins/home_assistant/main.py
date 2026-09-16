@@ -222,12 +222,16 @@ async def get_bot_menu():
                         if ent["state"] in ["on", "playing", "open", "unlocked"]: icon = "🟢"
                         elif ent["state"] in ["off", "paused", "closed", "locked"]: icon = "🔴"
 
+                    # Map whole action+entity to a single short key to fit < 64 bytes
                     if action_type == "toggle":
-                        btn_row.append({"text": f"{icon} {text}", "action": f"ha_c_{short_id}_toggle"})
+                        act = f"ha_c_{short_id}_toggle"
                     elif action_type == "press":
-                        btn_row.append({"text": f"{icon} {text}", "action": f"ha_c_{short_id}_press"})
+                        act = f"ha_c_{short_id}_press"
                     else: # default status
-                        btn_row.append({"text": f"{icon} {text}", "action": f"ha_e_{short_id}"})
+                        act = f"ha_e_{short_id}"
+
+                    state.hash_map[_get_short_hash(act)] = act
+                    btn_row.append({"text": f"{icon} {text}", "action": f"a_{_get_short_hash(act)}"})
                 else:
                     btn_row.append({"text": text, "action": "ha_none"})
             buttons.append(btn_row)
@@ -302,6 +306,10 @@ async def bot_callback(req: Request):
 
     if cb == "ha_b" or cb == "/":
         return await get_bot_menu()
+
+    # Resolve mapped actions
+    if cb.startswith("a_"):
+        cb = state.hash_map.get(cb[2:], cb)
 
     if cb.startswith("ha_g_"):
         g_hash = cb[5:]

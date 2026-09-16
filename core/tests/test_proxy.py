@@ -38,19 +38,19 @@ def run_around_tests():
 
 def test_proxy_stopped_plugin():
     client = TestClient(app)
-    response = client.get("/plugins/stopped_plugin/test")
+    response = client.get("/proxy/stopped_plugin/test")
     assert response.status_code == 502
 
 def test_proxy_not_found():
     client = TestClient(app)
-    response = client.get("/plugins/unknown_plugin/test")
+    response = client.get("/proxy/unknown_plugin/test")
     assert response.status_code == 404
 
 def test_proxy_unauthorized():
     app.dependency_overrides.pop(get_current_user, None)
     client = TestClient(app)
 
-    response = client.get("/plugins/example/test")
+    response = client.get("/proxy/example/test")
     assert response.status_code == 401
 
     app.dependency_overrides[get_current_user] = override_get_current_user
@@ -61,7 +61,7 @@ def test_proxy_websocket_unauthorized():
     client = TestClient(app)
 
     with pytest.raises(WebSocketDisconnect) as exc_info:
-        with client.websocket_connect("/plugins/example/test"):
+        with client.websocket_connect("/proxy/example/test"):
             pass
 
     assert exc_info.value.code == 1008

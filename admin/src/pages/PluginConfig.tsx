@@ -97,8 +97,8 @@ export function PluginConfig() {
       {isLoading ? (
           <div className="flex justify-center p-12"><div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>
       ) : hasWebUi ? (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden h-[800px]">
-              <iframe src={`/plugins/${pluginName}/index.html`} className="w-full h-full border-0 bg-gray-50" title="Plugin UI" />
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden h-[calc(100vh-150px)] min-h-[500px]">
+              <iframe src={`/proxy/${pluginName}/index.html`} className="w-full h-full border-0 bg-gray-50" title="Plugin UI" />
           </div>
       ) : (
           <div className="bg-white p-8 border border-gray-200 rounded-lg shadow-sm">

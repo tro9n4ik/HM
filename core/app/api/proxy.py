@@ -12,7 +12,7 @@ router = APIRouter(tags=["proxy"])
 
 client = httpx.AsyncClient()
 
-@router.websocket("/plugins/{plugin_name}/{path:path}")
+@router.websocket("/proxy/{plugin_name}/{path:path}")
 async def proxy_websocket(plugin_name: str, path: str, websocket: WebSocket, db: Session = Depends(get_db)):
     token = websocket.cookies.get("access_token")
     if not token:
@@ -74,7 +74,7 @@ async def proxy_websocket(plugin_name: str, path: str, websocket: WebSocket, db:
         except:
             pass
 
-@router.api_route("/plugins/{plugin_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+@router.api_route("/proxy/{plugin_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def proxy_to_plugin(plugin_name: str, path: str, request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     plugin = db.query(Plugin).filter(Plugin.name == plugin_name).first()
     if not plugin:
