@@ -79,7 +79,7 @@ const Sidebar = () => {
         <div className="flex items-center justify-between text-xs text-gray-500 px-3">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span>127.0.0.1</span>
+            <span>{window.location.hostname || 'localhost'}</span>
           </div>
           <span className="text-emerald-600">В норме</span>
         </div>

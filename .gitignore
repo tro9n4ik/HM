@@ -22,3 +22,4 @@ core/test_override.db
 core/app/web/static/admin/assets/
 core/app/web/static/admin/index.html
 core/test_override.db
+*.db
